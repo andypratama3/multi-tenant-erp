@@ -35,6 +35,7 @@ class AdminPanelProvider extends PanelProvider
             ->path('dashboard')
             ->login()
             ->brandName('ERP Samarinda')
+            ->viteTheme('resources/css/filament/dashboard/theme.css')
             ->strictAuthorization()
             ->globalSearchKeyBindings(['command+k', 'ctrl+k'])
             ->databaseNotifications()
