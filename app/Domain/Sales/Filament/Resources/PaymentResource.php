@@ -15,6 +15,7 @@ use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
@@ -116,7 +117,7 @@ class PaymentResource extends Resource
                     'qris' => 'QRIS',
                     default => 'Lainnya',
                 }),
-            TextColumn::make('amount')->label('Nominal')->money('IDR'),
+            TextColumn::make('amount')->label('Nominal')->money('IDR')->summarize(Sum::make()->label('Total')->money('IDR')),
         ])
             ->filters([
                 SelectFilter::make('payment_method')

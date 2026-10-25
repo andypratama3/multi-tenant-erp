@@ -25,6 +25,7 @@ use Spatie\Activitylog\Support\LogOptions;
  * @property string $discount_amount
  * @property string $total
  * @property string $paid_amount
+ * @property string $returned_amount
  * @property string|null $notes
  * @property string|null $created_by
  */
@@ -44,6 +45,7 @@ class SalesInvoice extends Model
         'discount_amount',
         'total',
         'paid_amount',
+        'returned_amount',
         'notes',
         'created_by',
     ];
@@ -59,6 +61,7 @@ class SalesInvoice extends Model
             'discount_amount' => 'decimal:2',
             'total' => 'decimal:2',
             'paid_amount' => 'decimal:2',
+            'returned_amount' => 'decimal:2',
         ];
     }
 
@@ -89,6 +92,12 @@ class SalesInvoice extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
+    }
+
+    /** @return HasMany<SalesReturn, $this> */
+    public function returns(): HasMany
+    {
+        return $this->hasMany(SalesReturn::class);
     }
 
     /** @return BelongsTo<User, $this> */

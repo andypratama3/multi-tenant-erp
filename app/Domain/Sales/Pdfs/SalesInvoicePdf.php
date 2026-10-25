@@ -3,6 +3,7 @@
 namespace App\Domain\Sales\Pdfs;
 
 use App\Domain\Sales\Models\SalesInvoice;
+use App\Support\Settings\CompanySettings;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -14,6 +15,7 @@ class SalesInvoicePdf
     {
         $pdf = Pdf::loadView('sales.invoices.pdf', [
             'invoice' => $this->invoice->load(['customer', 'items.product']),
+            'company' => app(CompanySettings::class)->all(),
         ]);
 
         $filename = 'invoice-'.$this->invoice->invoice_number.'.pdf';

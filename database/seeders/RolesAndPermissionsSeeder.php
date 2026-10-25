@@ -68,6 +68,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'sales' => [
                 ...DomainAbilities::forSubject('Customer', ['ViewAny', 'View', 'Create', 'Update']),
                 ...DomainAbilities::forSubject('SalesOrder', ['ViewAny', 'View', 'Create', 'Update', 'Delete', 'Confirm', 'Cancel']),
+                ...DomainAbilities::forSubject('SalesReturn', ['ViewAny', 'View', 'Create']),
                 ...DomainAbilities::forSubject('SalesInvoice', ['ViewAny', 'View', 'Create', 'Update', 'RecordPayment', 'DownloadPdf']),
                 ...DomainAbilities::forSubject('Delivery', ['ViewAny', 'View', 'Create']),
                 ...DomainAbilities::forSubject('Payment', ['ViewAny', 'View', 'Create']),
@@ -76,6 +77,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'kasir' => [
                 ...DomainAbilities::forSubject('Customer', ['ViewAny', 'View']),
                 ...DomainAbilities::forSubject('SalesOrder', ['ViewAny', 'View']),
+                ...DomainAbilities::forSubject('SalesReturn', ['ViewAny', 'View', 'Create']),
                 ...DomainAbilities::forSubject('SalesInvoice', ['ViewAny', 'View', 'Create', 'RecordPayment', 'DownloadPdf']),
                 ...DomainAbilities::forSubject('Payment', ['ViewAny', 'View', 'Create']),
                 ...DomainAbilities::forSubject('Delivery', ['ViewAny', 'View']),
@@ -85,6 +87,8 @@ class RolesAndPermissionsSeeder extends Seeder
                 ...DomainAbilities::forSubject('Supplier', ['ViewAny', 'View', 'Create', 'Update', 'Delete']),
                 ...DomainAbilities::forSubject('PurchaseOrder', ['ViewAny', 'View', 'Create', 'Update', 'Delete', 'Send', 'Cancel']),
                 ...DomainAbilities::forSubject('GoodsReceiptNote', ['ViewAny', 'View', 'Create', 'Update', 'Post']),
+                ...DomainAbilities::forSubject('PurchaseInvoice', ['ViewAny', 'View', 'Create']),
+                ...DomainAbilities::forSubject('SupplierPayment', ['ViewAny', 'View']),
                 ...$this->productReads(),
             ],
             'gudang' => [
@@ -102,6 +106,8 @@ class RolesAndPermissionsSeeder extends Seeder
                 ...DomainAbilities::forSubject('Payment', ['ViewAny', 'View']),
                 ...DomainAbilities::forSubject('PurchaseOrder', ['ViewAny', 'View']),
                 ...DomainAbilities::forSubject('GoodsReceiptNote', ['ViewAny', 'View']),
+                ...DomainAbilities::forSubject('PurchaseInvoice', ['ViewAny', 'View', 'RecordPayment']),
+                ...DomainAbilities::forSubject('SupplierPayment', ['ViewAny', 'View', 'Create']),
                 ...DomainAbilities::forSubject('Delivery', ['ViewAny', 'View']),
                 ...DomainAbilities::forSubject('Supplier', ['ViewAny', 'View']),
                 ...DomainAbilities::forSubject('Customer', ['ViewAny', 'View']),

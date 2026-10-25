@@ -26,6 +26,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
@@ -197,7 +198,7 @@ class SalesOrderResource extends Resource
                     'cancelled' => 'danger',
                     default => 'gray',
                 }),
-            TextColumn::make('total')->label('Total')->money('IDR'),
+            TextColumn::make('total')->label('Total')->money('IDR')->summarize(Sum::make()->label('Total')->money('IDR')),
         ])
             ->filters([
                 SelectFilter::make('status')
@@ -212,8 +213,7 @@ class SalesOrderResource extends Resource
                 SelectFilter::make('customer_id')
                     ->label('Pelanggan')
                     ->relationship('customer', 'name')
-                    ->searchable()
-                    ->preload(),
+                    ->searchable(),
                 Filter::make('tanggal')
                     ->label('Rentang Tanggal')
                     ->schema([

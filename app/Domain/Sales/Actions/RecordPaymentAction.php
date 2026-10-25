@@ -32,7 +32,7 @@ class RecordPaymentAction
                 throw new InvalidArgumentException('Nominal pembayaran harus lebih besar dari nol.');
             }
 
-            $outstanding = Money::round(Money::sub($invoice->total, $invoice->paid_amount));
+            $outstanding = Money::round(Money::sub(Money::sub($invoice->total, $invoice->returned_amount), $invoice->paid_amount));
 
             if (Money::compare($data->amount, $outstanding) === 1) {
                 throw new PaymentExceedsOutstandingException(

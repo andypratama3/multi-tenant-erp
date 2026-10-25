@@ -4,6 +4,7 @@ namespace App\Filament\Widgets;
 
 use App\Domain\Sales\Models\SalesInvoice;
 use Filament\Widgets\ChartWidget;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class SalesChartWidget extends ChartWidget
@@ -20,6 +21,15 @@ class SalesChartWidget extends ChartWidget
     }
 
     protected function getData(): array
+    {
+        /** @var array{labels: list<string>, datasets: list<array{label: string, data: list<float>, fill: bool}>} $data */
+        $data = Cache::remember('dashboard:sales-chart', now()->addMinutes(5), fn (): array => $this->buildData());
+
+        return $data;
+    }
+
+    /** @return array{labels: list<string>, datasets: list<array{label: string, data: list<float>, fill: bool}>} */
+    private function buildData(): array
     {
         $start = now()->subDays(13)->startOfDay();
 

@@ -11,6 +11,7 @@ use App\Domain\Sales\Filament\Resources\SalesInvoiceResource\Pages;
 use App\Domain\Sales\Models\Customer;
 use App\Domain\Sales\Models\SalesInvoice;
 use App\Domain\Sales\Models\SalesOrder;
+use App\Domain\Sales\Models\SalesReturn;
 use App\Domain\Sales\Pdfs\SalesInvoicePdf;
 use App\Filament\Support\DocumentTimeline;
 use App\Support\Money;
@@ -28,6 +29,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
@@ -210,8 +212,8 @@ class SalesInvoiceResource extends Resource
             TextColumn::make('customer.name')->label('Pelanggan')->searchable(),
             TextColumn::make('issued_at')->label('Tanggal')->date('d M Y')->sortable(),
             TextColumn::make('due_at')->label('Jatuh Tempo')->date('d M Y')->sortable(),
-            TextColumn::make('total')->label('Total')->money('IDR'),
-            TextColumn::make('paid_amount')->label('Dibayar')->money('IDR'),
+            TextColumn::make('total')->label('Total')->money('IDR')->summarize(Sum::make()->label('Total')->money('IDR')),
+            TextColumn::make('paid_amount')->label('Dibayar')->money('IDR')->summarize(Sum::make()->label('Dibayar')->money('IDR')),
             TextColumn::make('status')->label('Status')->badge()
                 ->formatStateUsing(fn (string $state): string => match ($state) {
                     'draft' => 'Draft',
@@ -243,8 +245,7 @@ class SalesInvoiceResource extends Resource
                 SelectFilter::make('customer_id')
                     ->label('Pelanggan')
                     ->relationship('customer', 'name')
-                    ->searchable()
-                    ->preload(),
+                    ->searchable(),
                 Filter::make('tanggal')
                     ->label('Rentang Tanggal')
                     ->schema([
@@ -266,6 +267,13 @@ class SalesInvoiceResource extends Resource
             ])
             ->actions([
                 ViewAction::make(),
+                Action::make('createReturn')
+                    ->label('Retur')
+                    ->icon('heroicon-o-arrow-uturn-left')
+                    ->color('warning')
+                    ->authorize('create', SalesReturn::class)
+                    ->visible(fn (SalesInvoice $record): bool => $record->status !== 'cancelled')
+                    ->url(fn (SalesInvoice $record): string => SalesReturnResource::getUrl('create', ['invoice_id' => $record->id])),
                 Action::make('downloadPdf')
                     ->label('Unduh PDF')
                     ->icon('heroicon-o-arrow-down-tray')

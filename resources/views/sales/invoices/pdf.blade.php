@@ -25,12 +25,12 @@
 <body>
 
 <div class="header">
-    <div class="company-name">{{ config('company.name') }}</div>
+    <div class="company-name">{{ $company['company_name'] }}</div>
     <div class="company-meta">
-        {{ config('company.address') }}
-        @if(config('company.phone')) &middot; Telp: {{ config('company.phone') }} @endif
-        @if(config('company.email')) &middot; {{ config('company.email') }} @endif
-        @if(config('company.tax_id')) &middot; NPWP: {{ config('company.tax_id') }} @endif
+        {{ $company['company_address'] }}
+        @if($company['company_phone']) &middot; Telp: {{ $company['company_phone'] }} @endif
+        @if($company['company_email']) &middot; {{ $company['company_email'] }} @endif
+        @if($company['company_tax_id']) &middot; NPWP: {{ $company['company_tax_id'] }} @endif
     </div>
     <div class="doc-title">FAKTUR / INVOICE</div>
 </div>
@@ -123,19 +123,19 @@
 
 <div style="clear:both"></div>
 
-@if(config('company.bank_name') || config('company.bank_account'))
+@if($company['company_bank_name'] || $company['company_bank_account'])
 <div style="margin-top:18px; padding:10px 12px; background:#f8fafc; border:1px solid #e2e8f0;">
     <strong>Pembayaran melalui transfer:</strong><br>
-    {{ config('company.bank_name') }}
-    @if(config('company.bank_account')) &middot; No. Rek: {{ config('company.bank_account') }} @endif
-    @if(config('company.bank_holder')) &middot; a.n. {{ config('company.bank_holder') }} @endif
+    {{ $company['company_bank_name'] }}
+    @if($company['company_bank_account']) &middot; No. Rek: {{ $company['company_bank_account'] }} @endif
+    @if($company['company_bank_holder']) &middot; a.n. {{ $company['company_bank_holder'] }} @endif
 </div>
 @endif
 
 <div style="margin-top:40px; display:flex; justify-content:space-between;">
     <div style="text-align:center; width:200px;">
         <div style="margin-bottom:50px;">Hormat kami,</div>
-        <div style="border-top:1px solid #333; padding-top:4px;">{{ config('company.name') }}</div>
+        <div style="border-top:1px solid #333; padding-top:4px;">{{ $company['company_name'] }}</div>
     </div>
     <div style="text-align:center; width:200px;">
         <div style="margin-bottom:50px;">Diterima oleh,</div>
@@ -144,7 +144,7 @@
 </div>
 
 <div class="footer">
-    Terima kasih atas kepercayaan Anda &mdash; {{ config('company.name') }}
+    Terima kasih atas kepercayaan Anda &mdash; {{ $company['company_name'] }}
 </div>
 </body>
 </html>

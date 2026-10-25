@@ -7,7 +7,7 @@ Legenda: `[ ]` belum, `[~]` sebagian, `[x]` selesai + terverifikasi, `[-]` ditun
 
 ## Baseline Terkini
 
-- [x] `php artisan test` — 47 passed, 113 assertions
+- [x] `php artisan test` — 78 passed, 191 assertions
 - [x] `vendor/bin/phpstan analyse` — 0 error
 - [x] `vendor/bin/pint --test` — passed
 - [x] Migrasi `notifications`, `media`, `document_sequences` sudah dijalankan
@@ -76,21 +76,37 @@ Legenda: `[ ]` belum, `[~]` sebagian, `[x]` selesai + terverifikasi, `[-]` ditun
 - [~] Select searchable/preload pada relasi besar; async search belum diterapkan
 - [x] Form transaksi live + validasi + prefill lintas dokumen (PO → GRN, SO → invoice/delivery)
 - [~] Tabel interaktif: filter, empty state, bulk delete master; summarizer/export tabel transaksi belum ada
-- [~] Dashboard role-aware + chart + widget AR/pembelian/stok; quick action/cache belum ada
-- [~] Global search master, notifikasi database; shortcut keyboard belum ada
-- [-] POS/kasir + gudang mobile/scan barcode
+- [x] Dashboard role-aware + chart + widget AR/pembelian/stok + quick action
+- [~] Global search master, notifikasi database, shortcut dokumen; shortcut keyboard global belum ada
+- [~] POS/kasir desktop selesai; mobile/scan barcode belum
 - [~] Branding, aksesibilitas, responsivitas, performa
 
 ## Catatan Sesi
 
 - Report AR aging dihitung di PHP agar portabel MySQL/PostgreSQL/SQLite; tidak lagi memakai `DATEDIFF`.
-- PDF invoice memakai identitas perusahaan dari `config/company.php` dan format uang `Money`.
+- PDF invoice memakai identitas perusahaan dari `CompanySettings` (fallback `config/company.php`) dan format uang `Money`.
 - Root `/` diarahkan ke `/admin`.
 - Filter transaksi mencakup status, pihak terkait, dan rentang tanggal; edit/hapus dibatasi untuk draft.
 - `GoodsReceiptNote` sekarang memiliki relasi `warehouse`.
 - Widget stok rendah memakai `StockBalance` per gudang dan titik pesan ulang produk.
-- Sisa backlog produk besar (POS, AP/purchase invoice, retur, stock opname/transfer, laporan keuangan,
-  e-Faktur, period lock, pengaturan perusahaan) tetap di luar sesi ini.
+- AP: GRN tetap mengkredit hutang `2-0001`; purchase invoice dari GRN hanya dokumen tanpa jurnal.
+  Pembayaran supplier memposting `Dr hutang / Cr kas|bank`; AP aging dihitung dari sisa purchase invoice.
+- Retur penjualan memposting `Dr pendapatan`, `Dr PPN keluaran` (jika ada), `Cr piutang`, dan mengurangi AR.
+- Stock opname/transfer memakai aksi posting terpisah; dokumen posted tidak dapat diposting ulang.
+- Laporan keuangan mencakup laba rugi, neraca, dan trial balance dari jurnal posted.
+- Period lock ditegakkan di `PostJournalAction`; pengaturan perusahaan dikelola via halaman `super_admin`.
+- POS memakai alur SO → konfirmasi → invoice → pembayaran tunai → delivery/posting stok dalam satu transaksi.
+- Export e-Faktur menghasilkan CSV per periode dari invoice ber-PPN; NPWP pelanggan wajib diisi untuk hasil lengkap.
+
+## Modul Lanjutan
+
+- [x] Accounts Payable: purchase invoice dari GRN, pembayaran supplier, AP aging
+- [x] Retur penjualan + pengurangan AR + opsi restock
+- [x] Stock opname dan transfer antar gudang
+- [x] Laporan keuangan: laba rugi, neraca, trial balance
+- [x] Period lock + pengaturan identitas perusahaan
+- [x] POS/kasir desktop (tanpa scan barcode)
+- [x] Export e-Faktur CSV per periode
 
 ## Log Verifikasi
 
@@ -98,3 +114,4 @@ Legenda: `[ ]` belum, `[~]` sebagian, `[x]` selesai + terverifikasi, `[-]` ditun
 |---|---|---|---|---|
 | 2026-10-25 | Baseline awal | 23 passed | 0 error | passed |
 | 2026-10-25 | UI transaksi, otorisasi, laporan, API, dashboard, PDF | 47 passed, 113 assertions | 0 error | passed |
+| 2026-10-25 | AP, retur, stock opname/transfer, laporan keuangan, period lock, POS, e-Faktur | 78 passed, 191 assertions | 0 error | passed |

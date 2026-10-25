@@ -7,6 +7,7 @@ use App\Domain\Purchasing\Actions\PostGoodsReceiptNoteAction;
 use App\Domain\Purchasing\Actions\PostGrnData;
 use App\Domain\Purchasing\Filament\Resources\GoodsReceiptNoteResource\Pages;
 use App\Domain\Purchasing\Models\GoodsReceiptNote;
+use App\Domain\Purchasing\Models\PurchaseInvoice;
 use App\Domain\Purchasing\Models\PurchaseOrder;
 use App\Domain\Purchasing\Models\PurchaseOrderItem;
 use App\Filament\Support\DocumentTimeline;
@@ -205,8 +206,7 @@ class GoodsReceiptNoteResource extends Resource
                 SelectFilter::make('warehouse_id')
                     ->label('Gudang')
                     ->relationship('warehouse', 'name')
-                    ->searchable()
-                    ->preload(),
+                    ->searchable(),
                 Filter::make('tanggal')
                     ->label('Rentang Tanggal')
                     ->schema([
@@ -228,6 +228,13 @@ class GoodsReceiptNoteResource extends Resource
             ])
             ->actions([
                 ViewAction::make(),
+                Action::make('createInvoice')
+                    ->label('Buat Faktur')
+                    ->icon('heroicon-o-document-plus')
+                    ->color('success')
+                    ->authorize('create', PurchaseInvoice::class)
+                    ->visible(fn (GoodsReceiptNote $record): bool => $record->status === 'posted' && $record->purchaseInvoice === null)
+                    ->url(fn (GoodsReceiptNote $record): string => PurchaseInvoiceResource::getUrl('create', ['grn_id' => $record->id])),
                 Action::make('post')
                     ->label('Posting')
                     ->icon('heroicon-o-check-circle')

@@ -209,8 +209,7 @@ class DeliveryResource extends Resource
                 SelectFilter::make('warehouse_id')
                     ->label('Gudang')
                     ->relationship('warehouse', 'name')
-                    ->searchable()
-                    ->preload(),
+                    ->searchable(),
                 Filter::make('tanggal')
                     ->label('Rentang Tanggal')
                     ->schema([

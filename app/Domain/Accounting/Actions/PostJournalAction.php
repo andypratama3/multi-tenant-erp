@@ -4,6 +4,7 @@ namespace App\Domain\Accounting\Actions;
 
 use App\Domain\Accounting\Exceptions\JournalNotBalancedException;
 use App\Domain\Accounting\Models\Journal;
+use App\Domain\Accounting\Services\PeriodLockService;
 use App\Support\Documents\DocumentNumberGenerator;
 use App\Support\Money;
 use Illuminate\Support\Facades\DB;
@@ -12,6 +13,8 @@ class PostJournalAction
 {
     public function execute(PostJournalData $data): Journal
     {
+        app(PeriodLockService::class)->ensureUnlocked($data->postedAt);
+
         // Validate balance before persisting (ADR 0004)
         $debitTotal = '0.00';
         $creditTotal = '0.00';

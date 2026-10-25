@@ -73,7 +73,7 @@ class SalesSummaryReport
         $rows = DB::table('sales_invoices as si')
             ->join('customers as c', 'c.id', '=', 'si.customer_id')
             ->select('c.code', 'c.name', 'si.due_at')
-            ->selectRaw('si.total - si.paid_amount as outstanding')
+            ->selectRaw('si.total - si.returned_amount - si.paid_amount as outstanding')
             ->whereNull('si.deleted_at')
             ->whereIn('si.status', ['issued', 'partial'])
             ->get();
