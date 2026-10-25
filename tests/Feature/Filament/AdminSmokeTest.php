@@ -30,7 +30,7 @@ beforeEach(function () {
 });
 
 it('renders the admin dashboard with the new widgets', function () {
-    $this->get('/admin')->assertOk();
+    $this->get('/dashboard')->assertOk();
 });
 
 it('renders key admin resource lists and the sales report', function (string $url) {
@@ -78,3 +78,18 @@ it('forbids a role without permission from opening a resource list url directly'
         ->get(PurchaseOrderResource::getUrl('index'))
         ->assertForbidden();
 });
+
+it('lets every operational role open the same dashboard', function (string $role) {
+    $this->actingAs(User::factory()->create()->assignRole($role))
+        ->get('/dashboard')
+        ->assertOk();
+})->with([
+    'super_admin',
+    'manajer',
+    'sales',
+    'kasir',
+    'pembelian',
+    'gudang',
+    'akuntan',
+    'auditor',
+]);
