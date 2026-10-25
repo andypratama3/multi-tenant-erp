@@ -128,6 +128,7 @@ class RolesAndPermissionsSeeder extends Seeder
         return [
             ...DomainAbilities::forSubject('Product', ['ViewAny', 'View']),
             ...DomainAbilities::forSubject('ProductCategory', ['ViewAny', 'View']),
+            ...DomainAbilities::forSubject('StockLot', ['ViewAny', 'View']),
             ...DomainAbilities::forSubject('Unit', ['ViewAny', 'View']),
             ...DomainAbilities::forSubject('Warehouse', ['ViewAny', 'View']),
             ...DomainAbilities::forSubject('TaxRate', ['ViewAny', 'View']),

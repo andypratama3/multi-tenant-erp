@@ -213,7 +213,8 @@ class SalesOrderResource extends Resource
                 SelectFilter::make('customer_id')
                     ->label('Pelanggan')
                     ->relationship('customer', 'name')
-                    ->searchable(),
+                    ->searchable()
+                    ->preload(),
                 Filter::make('tanggal')
                     ->label('Rentang Tanggal')
                     ->schema([

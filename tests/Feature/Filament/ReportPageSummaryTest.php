@@ -57,3 +57,18 @@ it('summarizes sales invoices for the report page', function () {
         'overdue' => '126500.00',
     ]);
 });
+
+it('applies report date presets', function () {
+    $this->seed(RolesAndPermissionsSeeder::class);
+    $this->actingAs(User::factory()->create()->assignRole('super_admin'));
+
+    Livewire::test(SalesReport::class)
+        ->call('applyPeriod', 'this_month')
+        ->assertSet('fromDate', now()->startOfMonth()->format('Y-m-d'))
+        ->assertSet('toDate', now()->endOfMonth()->format('Y-m-d'));
+
+    Livewire::test(SalesReport::class)
+        ->call('applyPeriod', 'last_month')
+        ->assertSet('fromDate', now()->subMonthNoOverflow()->startOfMonth()->format('Y-m-d'))
+        ->assertSet('toDate', now()->subMonthNoOverflow()->endOfMonth()->format('Y-m-d'));
+});

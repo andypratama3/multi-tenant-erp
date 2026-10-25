@@ -4,12 +4,15 @@ namespace App\Filament\Pages;
 
 use App\Domain\Sales\Models\SalesInvoice;
 use App\Domain\Tax\Services\EFakturExportService;
+use App\Filament\Concerns\HasDateRangePresets;
 use Filament\Pages\Page;
 use Illuminate\Support\Carbon;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class EFakturExport extends Page
 {
+    use HasDateRangePresets;
+
     protected string $view = 'filament.pages.e-faktur-export';
 
     protected static \BackedEnum|string|null $navigationIcon = 'heroicon-o-document-arrow-down';

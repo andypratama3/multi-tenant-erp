@@ -6,11 +6,14 @@ use App\Domain\Accounting\Models\Journal;
 use App\Domain\Reporting\Data\AccountBalanceRow;
 use App\Domain\Reporting\Data\TrialBalanceRow;
 use App\Domain\Reporting\Services\FinancialReportService;
+use App\Filament\Concerns\HasDateRangePresets;
 use Filament\Pages\Page;
 use Illuminate\Support\Carbon;
 
 class FinancialReport extends Page
 {
+    use HasDateRangePresets;
+
     protected string $view = 'filament.pages.financial-report';
 
     protected static \BackedEnum|string|null $navigationIcon = 'heroicon-o-chart-bar-square';
@@ -86,6 +89,11 @@ class FinancialReport extends Page
             'total_liabilities_equity' => $balance['total_liabilities_equity'],
             'balanced' => $balance['balanced'],
         ];
+    }
+
+    protected function afterPeriodApplied(): void
+    {
+        $this->loadReport();
     }
 
     /** @return array<string, mixed> */

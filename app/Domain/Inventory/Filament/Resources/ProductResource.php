@@ -16,6 +16,8 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -55,6 +57,22 @@ class ProductResource extends Resource
                         ->label('Kategori')
                         ->options(fn (): array => ProductCategory::query()->orderBy('name')->pluck('name', 'id')->all())
                         ->searchable()
+                        ->live()
+                        ->afterStateUpdated(function (?string $state, Set $set): void {
+                            if ($state === null) {
+                                return;
+                            }
+
+                            $category = ProductCategory::query()->find($state);
+
+                            if ($category === null || ! $category->requires_expiry) {
+                                return;
+                            }
+
+                            $set('requires_expiry', true);
+                            $set('shelf_life_days', $category->default_shelf_life_days);
+                            $set('expiry_alert_days', $category->default_expiry_alert_days);
+                        })
                         ->nullable(),
                     Select::make('unit_id')
                         ->label('Satuan')
@@ -98,6 +116,33 @@ class ProductResource extends Resource
                         ->default(0),
                 ])
                 ->columns(2),
+            Section::make('Pelacakan Kedaluwarsa')
+                ->description('Aktifkan untuk produk segar atau produk lain yang memiliki batch dan tanggal kedaluwarsa.')
+                ->schema([
+                    Toggle::make('requires_expiry')
+                        ->label('Lacak batch & kedaluwarsa')
+                        ->default(false)
+                        ->live(),
+                    TextInput::make('shelf_life_days')
+                        ->label('Umur Simpan (hari)')
+                        ->numeric()
+                        ->integer()
+                        ->minValue(1)
+                        ->maxValue(3650)
+                        ->required(fn (Get $get): bool => (bool) $get('requires_expiry'))
+                        ->visible(fn (Get $get): bool => (bool) $get('requires_expiry'))
+                        ->helperText('Dipakai untuk menghitung kedaluwarsa otomatis saat barang diterima.'),
+                    TextInput::make('expiry_alert_days')
+                        ->label('Peringatan Sebelum Kedaluwarsa (hari)')
+                        ->numeric()
+                        ->integer()
+                        ->minValue(1)
+                        ->maxValue(365)
+                        ->default(7)
+                        ->required(fn (Get $get): bool => (bool) $get('requires_expiry'))
+                        ->visible(fn (Get $get): bool => (bool) $get('requires_expiry')),
+                ])
+                ->columns(3),
             Section::make('Status')
                 ->schema([
                     Toggle::make('is_active')->label('Aktif')->default(true),
@@ -132,6 +177,9 @@ class ProductResource extends Resource
                     ->label('Harga Jual')
                     ->money('IDR')
                     ->sortable(),
+                IconColumn::make('requires_expiry')
+                    ->label('Batch')
+                    ->boolean(),
                 IconColumn::make('is_active')
                     ->label('Aktif')
                     ->boolean(),
@@ -144,6 +192,7 @@ class ProductResource extends Resource
                     ->preload(),
                 TernaryFilter::make('is_active')->label('Status Aktif'),
                 TernaryFilter::make('is_stockable')->label('Dikelola Stok'),
+                TernaryFilter::make('requires_expiry')->label('Lacak Kedaluwarsa'),
             ])
             ->actions([
                 EditAction::make(),

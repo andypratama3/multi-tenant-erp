@@ -87,6 +87,7 @@ class DeliveryResource extends Resource
                     Select::make('sales_order_item_id')
                         ->label('Item Pesanan')
                         ->required()
+                        ->searchable()
                         ->live()
                         ->options(function (Get $get): array {
                             $salesOrderId = $get('../../sales_order_id');
@@ -209,7 +210,8 @@ class DeliveryResource extends Resource
                 SelectFilter::make('warehouse_id')
                     ->label('Gudang')
                     ->relationship('warehouse', 'name')
-                    ->searchable(),
+                    ->searchable()
+                    ->preload(),
                 Filter::make('tanggal')
                     ->label('Rentang Tanggal')
                     ->schema([

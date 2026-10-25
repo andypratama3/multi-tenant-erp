@@ -73,6 +73,9 @@ class PostGoodsReceiptNoteAction
                     referenceType: GoodsReceiptNote::class,
                     referenceId: $grn->id,
                     createdBy: $grn->created_by,
+                    receivedAt: $grn->received_at->toDateString(),
+                    expiryDate: $item->expiry_date?->toDateString(),
+                    lotNumber: $item->lot_number,
                 ));
             }
 

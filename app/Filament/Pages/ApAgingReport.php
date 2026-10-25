@@ -62,6 +62,18 @@ class ApAgingReport extends Page
         $this->totals = $totals;
     }
 
+    public function applyPeriod(string $preset): void
+    {
+        $this->asOfDate = match ($preset) {
+            'last_month' => now()->subMonthNoOverflow()->endOfMonth()->format('Y-m-d'),
+            'last_quarter' => now()->subQuarterNoOverflow()->endOfQuarter()->format('Y-m-d'),
+            'year_start' => now()->startOfYear()->format('Y-m-d'),
+            default => now()->format('Y-m-d'),
+        };
+
+        $this->loadReport();
+    }
+
     public function updateReport(): void
     {
         $this->validate([

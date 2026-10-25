@@ -23,6 +23,9 @@ use Illuminate\Support\Carbon;
  * @property string|null $barcode
  * @property bool $is_active
  * @property bool $is_stockable
+ * @property bool $requires_expiry
+ * @property int|null $shelf_life_days
+ * @property int $expiry_alert_days
  * @property string $min_stock
  * @property string $reorder_point
  * @property Carbon $created_at
@@ -31,6 +34,7 @@ use Illuminate\Support\Carbon;
  * @property-read ProductCategory|null $category
  * @property-read Unit $unit
  * @property-read Collection<int, StockLedger> $stockLedgers
+ * @property-read Collection<int, StockLot> $stockLots
  * @property-read StockBalance|null $currentStock
  */
 class Product extends Model
@@ -50,6 +54,9 @@ class Product extends Model
         'barcode',
         'is_active',
         'is_stockable',
+        'requires_expiry',
+        'shelf_life_days',
+        'expiry_alert_days',
         'min_stock',
         'reorder_point',
     ];
@@ -61,6 +68,9 @@ class Product extends Model
         'reorder_point' => 'decimal:3',
         'is_active' => 'boolean',
         'is_stockable' => 'boolean',
+        'requires_expiry' => 'boolean',
+        'shelf_life_days' => 'integer',
+        'expiry_alert_days' => 'integer',
     ];
 
     /** @return BelongsTo<ProductCategory, $this> */
@@ -79,6 +89,12 @@ class Product extends Model
     public function stockLedgers(): HasMany
     {
         return $this->hasMany(StockLedger::class, 'product_id');
+    }
+
+    /** @return HasMany<StockLot, $this> */
+    public function stockLots(): HasMany
+    {
+        return $this->hasMany(StockLot::class);
     }
 
     /**

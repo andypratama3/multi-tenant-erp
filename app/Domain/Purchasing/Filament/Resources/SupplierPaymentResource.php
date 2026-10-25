@@ -123,7 +123,8 @@ class SupplierPaymentResource extends Resource
                 SelectFilter::make('purchase_invoice_id')
                     ->label('Faktur')
                     ->relationship('invoice', 'ap_number')
-                    ->searchable(),
+                    ->searchable()
+                    ->preload(),
             ])
             ->actions([
                 ViewAction::make(),

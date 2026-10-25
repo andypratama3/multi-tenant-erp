@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Domain\Inventory\Filament\Widgets\ExpiryAlertWidget;
 use App\Domain\Inventory\Filament\Widgets\LowStockWidget;
 use App\Filament\Pages\Dashboard;
 use App\Filament\Widgets\CashFlowChartWidget;
@@ -62,6 +63,7 @@ class AdminPanelProvider extends PanelProvider
                 CashFlowChartWidget::class,
                 StockValuationWidget::class,
                 LowStockWidget::class,
+                ExpiryAlertWidget::class,
             ])
             ->navigationGroups([
                 'Inventaris',

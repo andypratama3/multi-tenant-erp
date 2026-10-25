@@ -69,7 +69,7 @@ final class DocumentFormData
     }
 
     /**
-     * @return array<int, array{purchase_order_item_id: string, quantity_received: string, unit_cost: string}>
+     * @return array<int, array{purchase_order_item_id: string, quantity_received: string, unit_cost: string, lot_number: string|null, expiry_date: string|null}>
      */
     public static function receiptItems(mixed $items): array
     {
@@ -80,6 +80,8 @@ final class DocumentFormData
                 'purchase_order_item_id' => self::value($item['purchase_order_item_id'] ?? null),
                 'quantity_received' => self::value($item['quantity_received'] ?? null),
                 'unit_cost' => self::value($item['unit_cost'] ?? null),
+                'lot_number' => self::nullableValue($item['lot_number'] ?? null),
+                'expiry_date' => self::nullableValue($item['expiry_date'] ?? null),
             ];
         }
 
@@ -139,5 +141,10 @@ final class DocumentFormData
     private static function value(mixed $value): string
     {
         return is_scalar($value) ? (string) $value : '0';
+    }
+
+    private static function nullableValue(mixed $value): ?string
+    {
+        return is_scalar($value) && (string) $value !== '' ? (string) $value : null;
     }
 }

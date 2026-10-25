@@ -5,7 +5,7 @@ namespace App\Domain\Purchasing\Actions;
 final class CreateGoodsReceiptNoteData
 {
     /**
-     * @param  array<int, array{purchase_order_item_id: string, quantity_received: string, unit_cost?: string|null}>  $items
+     * @param  array<int, array{purchase_order_item_id: string, quantity_received: string, unit_cost?: string|null, lot_number?: string|null, expiry_date?: string|null}>  $items
      */
     public function __construct(
         public readonly string $purchaseOrderId,

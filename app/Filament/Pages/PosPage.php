@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Domain\Inventory\Models\Product;
 use App\Domain\Inventory\Models\StockBalance;
 use App\Domain\Inventory\Models\Warehouse;
+use App\Domain\Inventory\Services\StockLotService;
 use App\Domain\Sales\Actions\ConfirmSalesOrderAction;
 use App\Domain\Sales\Actions\ConfirmSalesOrderData;
 use App\Domain\Sales\Actions\CreateDeliveryAction;
@@ -55,7 +56,7 @@ class PosPage extends Page
 
     public string $notes = '';
 
-    /** @var array<string, array{product_id: string, name: string, sku: string, quantity: string, unit_price: string, tax_rate: string}> */
+    /** @var array<string, array{product_id: string, name: string, sku: string, quantity: string, unit_price: string, tax_rate: string, expiry_date: string|null, expiry_alert_days: int}> */
     public array $cart = [];
 
     public ?string $lastInvoiceNumber = null;
@@ -63,6 +64,9 @@ class PosPage extends Page
     public string $lastChange = '0.00';
 
     public bool $processing = false;
+
+    /** @var array<string, numeric-string> */
+    private array $stockCache = [];
 
     public static function canAccess(): bool
     {
@@ -116,6 +120,11 @@ class PosPage extends Page
             ->all();
     }
 
+    public function updatedWarehouseId(): void
+    {
+        $this->stockCache = [];
+    }
+
     /** @return numeric-string */
     public function stockFor(string $productId): string
     {
@@ -123,12 +132,38 @@ class PosPage extends Page
             return '0.000';
         }
 
+        $cacheKey = $this->warehouseId.':'.$productId;
+
+        if (isset($this->stockCache[$cacheKey])) {
+            return $this->stockCache[$cacheKey];
+        }
+
+        $requiresExpiry = (bool) Product::query()
+            ->whereKey($productId)
+            ->value('requires_expiry');
+
+        if ($requiresExpiry) {
+            return $this->stockCache[$cacheKey] = app(StockLotService::class)
+                ->availableQuantity($productId, $this->warehouseId);
+        }
+
         $stock = StockBalance::query()
             ->where('product_id', $productId)
             ->where('warehouse_id', $this->warehouseId)
             ->value('quantity');
 
-        return $stock !== null ? Money::decimal((string) $stock, 3) : '0.000';
+        return $this->stockCache[$cacheKey] = $stock !== null ? Money::decimal((string) $stock, 3) : '0.000';
+    }
+
+    public function expiryFor(string $productId): ?string
+    {
+        if ($this->warehouseId === '') {
+            return null;
+        }
+
+        return app(StockLotService::class)
+            ->earliestExpiry($productId, $this->warehouseId)
+            ?->toDateString();
     }
 
     public function addProduct(): void
@@ -166,6 +201,8 @@ class PosPage extends Page
             'quantity' => $newQuantity,
             'unit_price' => $product->selling_price,
             'tax_rate' => TaxDefaults::ppnRate(),
+            'expiry_date' => $this->expiryFor($product->id),
+            'expiry_alert_days' => $product->expiry_alert_days,
         ];
 
         $this->productId = '';
@@ -355,6 +392,7 @@ class PosPage extends Page
             });
 
             $this->lastInvoiceNumber = $invoiceNumber;
+            $this->stockCache = [];
             $this->clearCart();
             $this->notes = '';
             $this->lastChange = Money::compare($change, '0') === 1 ? $change : '0.00';

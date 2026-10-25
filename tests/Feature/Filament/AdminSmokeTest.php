@@ -3,7 +3,12 @@
 use App\Domain\Accounting\Filament\Resources\JournalResource;
 use App\Domain\Inventory\Filament\Resources\ProductResource;
 use App\Domain\Inventory\Filament\Resources\StockAdjustmentResource;
+use App\Domain\Inventory\Filament\Resources\StockLotResource;
 use App\Domain\Inventory\Filament\Resources\WarehouseTransferResource;
+use App\Domain\Inventory\Models\Product;
+use App\Domain\Inventory\Models\StockLot;
+use App\Domain\Inventory\Models\Unit;
+use App\Domain\Inventory\Models\Warehouse;
 use App\Domain\Purchasing\Filament\Resources\GoodsReceiptNoteResource;
 use App\Domain\Purchasing\Filament\Resources\PurchaseInvoiceResource;
 use App\Domain\Purchasing\Filament\Resources\PurchaseOrderResource;
@@ -39,6 +44,7 @@ it('renders key admin resource lists and the sales report', function (string $ur
     'products' => [fn () => ProductResource::getUrl('index')],
     'stock adjustments' => [fn () => StockAdjustmentResource::getUrl('index')],
     'warehouse transfers' => [fn () => WarehouseTransferResource::getUrl('index')],
+    'stock lots' => [fn () => StockLotResource::getUrl('index')],
     'purchase orders' => [fn () => PurchaseOrderResource::getUrl('index')],
     'goods receipts' => [fn () => GoodsReceiptNoteResource::getUrl('index')],
     'sales orders' => [fn () => SalesOrderResource::getUrl('index')],
@@ -93,3 +99,25 @@ it('lets every operational role open the same dashboard', function (string $role
     'akuntan',
     'auditor',
 ]);
+
+it('renders a stock lot detail page', function () {
+    $unit = Unit::create(['name' => 'Pcs', 'symbol' => 'pcs']);
+    $product = Product::create([
+        'sku' => 'SMOKE-LOT', 'name' => 'Produk Smoke Lot', 'unit_id' => $unit->id,
+        'cost_price' => '1000.0000', 'selling_price' => '2000.0000',
+        'requires_expiry' => true, 'shelf_life_days' => 30, 'expiry_alert_days' => 7,
+    ]);
+    $warehouse = Warehouse::create(['code' => 'WH-SMOKE', 'name' => 'Gudang Smoke']);
+    $lot = StockLot::create([
+        'product_id' => $product->id,
+        'warehouse_id' => $warehouse->id,
+        'lot_number' => 'SMOKE-LOT-01',
+        'received_at' => '2026-10-01',
+        'expiry_date' => '2026-10-31',
+        'quantity_received' => '5.000',
+        'quantity_remaining' => '5.000',
+        'unit_cost' => '1000.0000',
+    ]);
+
+    $this->get(StockLotResource::getUrl('view', ['record' => $lot]))->assertOk();
+});

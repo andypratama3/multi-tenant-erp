@@ -6,6 +6,7 @@ use App\Domain\Inventory\Models\Product;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
  * @property string $id
@@ -14,6 +15,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $product_id
  * @property string $quantity_received
  * @property string $unit_cost
+ * @property string|null $lot_number
+ * @property Carbon|null $expiry_date
  */
 class GoodsReceiptNoteItem extends Model
 {
@@ -25,6 +28,8 @@ class GoodsReceiptNoteItem extends Model
         'product_id',
         'quantity_received',
         'unit_cost',
+        'lot_number',
+        'expiry_date',
     ];
 
     /**
@@ -35,6 +40,7 @@ class GoodsReceiptNoteItem extends Model
         return [
             'quantity_received' => 'decimal:3',
             'unit_cost' => 'decimal:4',
+            'expiry_date' => 'date',
         ];
     }
 

@@ -193,7 +193,8 @@ class PurchaseOrderResource extends Resource
                 SelectFilter::make('supplier_id')
                     ->label('Pemasok')
                     ->relationship('supplier', 'name')
-                    ->searchable(),
+                    ->searchable()
+                    ->preload(),
                 Filter::make('tanggal')
                     ->label('Rentang Tanggal')
                     ->schema([

@@ -3,8 +3,11 @@
 namespace App\Domain\Inventory\Actions;
 
 use App\Domain\Inventory\Exceptions\InsufficientStockException;
+use App\Domain\Inventory\Models\Product;
 use App\Domain\Inventory\Models\StockBalance;
 use App\Domain\Inventory\Models\StockLedger;
+use App\Domain\Inventory\Services\StockLotService;
+use App\Support\Money;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -13,6 +16,9 @@ class RecordStockMovementAction
     public function execute(RecordStockMovementData $data): StockLedger
     {
         return DB::transaction(function () use ($data): StockLedger {
+            $product = Product::query()->findOrFail($data->productId);
+            $stockLots = app(StockLotService::class);
+
             $balance = StockBalance::firstOrCreate(
                 [
                     'product_id' => $data->productId,
@@ -31,6 +37,19 @@ class RecordStockMovementAction
 
             // For 'out' movements and negative adjustments: check sufficient stock
             if ($data->movementType === 'out') {
+                if ($product->requires_expiry) {
+                    $sellable = $stockLots->availableQuantity($product->id, $data->warehouseId);
+
+                    if (bccomp(Money::decimal($data->quantity, 3), $sellable, 3) === 1) {
+                        throw new InsufficientStockException(
+                            $data->productId,
+                            $data->warehouseId,
+                            $data->quantity,
+                            $sellable
+                        );
+                    }
+                }
+
                 if ($incomingQty > $currentQty) {
                     throw new InsufficientStockException(
                         $data->productId,
@@ -87,6 +106,12 @@ class RecordStockMovementAction
                 'created_by' => $data->createdBy,
             ]);
             $ledger->save();
+
+            if ($incomingQty > 0 && in_array($data->movementType, ['in', 'opening', 'adjustment'], true)) {
+                $stockLots->receive($product, $data, $ledger);
+            } elseif ($data->movementType === 'out' || ($data->movementType === 'adjustment' && $incomingQty < 0)) {
+                $stockLots->consume($product, $data, $ledger);
+            }
 
             return $ledger;
         });

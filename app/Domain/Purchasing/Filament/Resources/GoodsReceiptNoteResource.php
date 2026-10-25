@@ -34,6 +34,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 use Throwable;
 
 class GoodsReceiptNoteResource extends Resource
@@ -89,6 +90,7 @@ class GoodsReceiptNoteResource extends Resource
                     Select::make('purchase_order_item_id')
                         ->label('Item Pesanan')
                         ->required()
+                        ->searchable()
                         ->live()
                         ->options(function (Get $get): array {
                             $purchaseOrderId = $get('../../purchase_order_id');
@@ -116,12 +118,12 @@ class GoodsReceiptNoteResource extends Resource
                                 ])
                                 ->all();
                         })
-                        ->afterStateUpdated(function (?string $state, Set $set): void {
+                        ->afterStateUpdated(function (?string $state, Set $set, Get $get): void {
                             if ($state === null) {
                                 return;
                             }
 
-                            $item = PurchaseOrderItem::query()->find($state);
+                            $item = PurchaseOrderItem::query()->with('product')->find($state);
 
                             if ($item === null) {
                                 return;
@@ -135,6 +137,19 @@ class GoodsReceiptNoteResource extends Resource
 
                             $set('quantity_received', $remaining);
                             $set('unit_cost', (string) $item->unit_price);
+
+                            $product = $item->product;
+                            $expiryDate = null;
+
+                            if ($product?->requires_expiry && $product->shelf_life_days !== null) {
+                                $receivedAt = $get('../../received_at');
+                                $expiryDate = Carbon::parse(is_string($receivedAt) ? $receivedAt : now()->toDateString())
+                                    ->addDays($product->shelf_life_days)
+                                    ->toDateString();
+                            }
+
+                            $set('expiry_date', $expiryDate);
+                            $set('lot_number', null);
                         }),
                     TextInput::make('quantity_received')
                         ->label('Qty Diterima')
@@ -149,8 +164,17 @@ class GoodsReceiptNoteResource extends Resource
                         ->minValue(0)
                         ->step('0.0001')
                         ->prefix('Rp'),
+                    TextInput::make('lot_number')
+                        ->label('No. Batch')
+                        ->maxLength(100)
+                        ->placeholder('Opsional')
+                        ->visible(fn (Get $get): bool => self::itemRequiresExpiry($get('purchase_order_item_id'))),
+                    DatePicker::make('expiry_date')
+                        ->label('Kedaluwarsa')
+                        ->visible(fn (Get $get): bool => self::itemRequiresExpiry($get('purchase_order_item_id')))
+                        ->required(fn (Get $get): bool => self::itemRequiresExpiry($get('purchase_order_item_id'))),
                 ])
-                ->columns(3)
+                ->columns(5)
                 ->minItems(1)
                 ->defaultItems(1)
                 ->columnSpanFull(),
@@ -178,8 +202,10 @@ class GoodsReceiptNoteResource extends Resource
                             TextEntry::make('product.name')->label('Produk'),
                             TextEntry::make('quantity_received')->label('Qty Diterima'),
                             TextEntry::make('unit_cost')->label('Harga Satuan')->money('IDR'),
+                            TextEntry::make('lot_number')->label('No. Batch')->placeholder('—'),
+                            TextEntry::make('expiry_date')->label('Kedaluwarsa')->date('d M Y')->placeholder('—'),
                         ])
-                        ->columns(3),
+                        ->columns(5),
                 ]),
             DocumentTimeline::make(),
         ]);
@@ -206,7 +232,8 @@ class GoodsReceiptNoteResource extends Resource
                 SelectFilter::make('warehouse_id')
                     ->label('Gudang')
                     ->relationship('warehouse', 'name')
-                    ->searchable(),
+                    ->searchable()
+                    ->preload(),
                 Filter::make('tanggal')
                     ->label('Rentang Tanggal')
                     ->schema([
@@ -260,6 +287,18 @@ class GoodsReceiptNoteResource extends Resource
             ->emptyStateHeading('Belum ada penerimaan barang')
             ->emptyStateDescription('Buat penerimaan dari pesanan pembelian yang sudah dikirim.')
             ->defaultSort('created_at', 'desc');
+    }
+
+    private static function itemRequiresExpiry(mixed $purchaseOrderItemId): bool
+    {
+        if (! is_string($purchaseOrderItemId) || $purchaseOrderItemId === '') {
+            return false;
+        }
+
+        return PurchaseOrderItem::query()
+            ->whereKey($purchaseOrderItemId)
+            ->whereHas('product', fn (Builder $query): Builder => $query->where('requires_expiry', true))
+            ->exists();
     }
 
     /** @return Builder<Model> */

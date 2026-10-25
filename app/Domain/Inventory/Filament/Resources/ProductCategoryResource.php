@@ -14,6 +14,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\IconColumn;
@@ -66,6 +67,30 @@ class ProductCategoryResource extends Resource
                     Toggle::make('is_active')->label('Aktif')->default(true),
                 ])
                 ->columns(2),
+            Section::make('Default Kedaluwarsa')
+                ->description('Nilai ini dipakai otomatis saat produk baru memilih kategori ini.')
+                ->schema([
+                    Toggle::make('requires_expiry')
+                        ->label('Produk kategori ini lacak kedaluwarsa')
+                        ->default(false)
+                        ->live(),
+                    TextInput::make('default_shelf_life_days')
+                        ->label('Umur Simpan Default (hari)')
+                        ->numeric()
+                        ->integer()
+                        ->minValue(1)
+                        ->maxValue(3650)
+                        ->visible(fn (Get $get): bool => (bool) $get('requires_expiry')),
+                    TextInput::make('default_expiry_alert_days')
+                        ->label('Peringatan Default (hari)')
+                        ->numeric()
+                        ->integer()
+                        ->minValue(1)
+                        ->maxValue(365)
+                        ->default(7)
+                        ->visible(fn (Get $get): bool => (bool) $get('requires_expiry')),
+                ])
+                ->columns(3),
         ]);
     }
 
@@ -83,12 +108,16 @@ class ProductCategoryResource extends Resource
                 TextColumn::make('parent.name')
                     ->label('Kategori Induk')
                     ->placeholder('—'),
+                IconColumn::make('requires_expiry')
+                    ->label('Batch')
+                    ->boolean(),
                 IconColumn::make('is_active')
                     ->label('Aktif')
                     ->boolean(),
             ])
             ->filters([
                 TernaryFilter::make('is_active')->label('Status Aktif'),
+                TernaryFilter::make('requires_expiry')->label('Lacak Kedaluwarsa'),
             ])
             ->actions([
                 EditAction::make(),

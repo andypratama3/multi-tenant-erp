@@ -169,6 +169,7 @@ class CreateSalesReturnAction
                         referenceId: $return->id,
                         notes: "Retur penjualan {$return->return_number}",
                         createdBy: $data->createdBy,
+                        receivedAt: $data->returnedAt,
                     ));
                 }
             }

@@ -4,6 +4,9 @@ namespace App\Domain\Inventory\Actions;
 
 final class RecordStockMovementData
 {
+    /**
+     * @param  array<int, array{lot_number?: string|null, expiry_date?: string|null, quantity: string, unit_cost?: string|null}>  $lots
+     */
     public function __construct(
         public readonly string $productId,
         public readonly string $warehouseId,
@@ -14,5 +17,10 @@ final class RecordStockMovementData
         public readonly ?string $referenceId = null,
         public readonly ?string $notes = null,
         public readonly ?string $createdBy = null,
+        public readonly ?string $receivedAt = null,
+        public readonly ?string $expiryDate = null,
+        public readonly ?string $lotNumber = null,
+        public readonly bool $allowExpired = false,
+        public readonly array $lots = [],
     ) {}
 }

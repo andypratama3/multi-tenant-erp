@@ -77,6 +77,8 @@ class CreateGoodsReceiptNoteAction
                     'product_id' => $poItem->product_id,
                     'quantity_received' => $quantity,
                     'unit_cost' => $item['unit_cost'] ?? $poItem->unit_price,
+                    'lot_number' => $item['lot_number'] ?? null,
+                    'expiry_date' => $item['expiry_date'] ?? null,
                 ]);
             }
 

@@ -183,7 +183,8 @@ class PurchaseInvoiceResource extends Resource
                 SelectFilter::make('supplier_id')
                     ->label('Pemasok')
                     ->relationship('supplier', 'name')
-                    ->searchable(),
+                    ->searchable()
+                    ->preload(),
                 Filter::make('jatuh_tempo')
                     ->label('Jatuh Tempo')
                     ->schema([

@@ -64,6 +64,7 @@ class SalesReturnResource extends Resource
                     Select::make('warehouse_id')
                         ->label('Gudang Penerima')
                         ->required()
+                        ->searchable()
                         ->options(fn (): array => Warehouse::query()->orderBy('name')->pluck('name', 'id')->all())
                         ->default(fn (): ?string => Warehouse::query()->orderBy('name')->value('id')),
                     DatePicker::make('returned_at')->label('Tanggal Retur')->required()->default(now()->toDateString()),
@@ -176,7 +177,7 @@ class SalesReturnResource extends Resource
             TextColumn::make('total')->label('Total')->money('IDR'),
         ])
             ->filters([
-                SelectFilter::make('warehouse_id')->label('Gudang')->relationship('warehouse', 'name'),
+                SelectFilter::make('warehouse_id')->label('Gudang')->relationship('warehouse', 'name')->searchable()->preload(),
             ])
             ->actions([ViewAction::make()])
             ->emptyStateHeading('Belum ada retur penjualan')

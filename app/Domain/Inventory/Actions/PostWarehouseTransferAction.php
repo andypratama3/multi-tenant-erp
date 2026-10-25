@@ -4,6 +4,7 @@ namespace App\Domain\Inventory\Actions;
 
 use App\Domain\Inventory\Exceptions\DocumentAlreadyPostedException;
 use App\Domain\Inventory\Models\WarehouseTransfer;
+use App\Domain\Inventory\Services\StockLotService;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -30,7 +31,7 @@ class PostWarehouseTransferAction
             }
 
             foreach ($transfer->items as $item) {
-                $this->stockMovement->execute(new RecordStockMovementData(
+                $outboundLedger = $this->stockMovement->execute(new RecordStockMovementData(
                     productId: $item->product_id,
                     warehouseId: $transfer->from_warehouse_id,
                     movementType: 'out',
@@ -42,6 +43,8 @@ class PostWarehouseTransferAction
                     createdBy: $postedBy,
                 ));
 
+                $lots = app(StockLotService::class)->snapshotsForLedger($outboundLedger->id);
+
                 $this->stockMovement->execute(new RecordStockMovementData(
                     productId: $item->product_id,
                     warehouseId: $transfer->to_warehouse_id,
@@ -52,6 +55,7 @@ class PostWarehouseTransferAction
                     referenceId: $transfer->id,
                     notes: "Transfer masuk {$transfer->transfer_number}",
                     createdBy: $postedBy,
+                    lots: $lots,
                 ));
             }
 

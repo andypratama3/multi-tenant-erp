@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Domain\Reporting\Exports\SalesSummaryExport;
 use App\Domain\Reporting\Services\SalesSummaryReport;
 use App\Domain\Sales\Models\SalesInvoice;
+use App\Filament\Concerns\HasDateRangePresets;
 use App\Support\Money;
 use Filament\Pages\Page;
 use Illuminate\Support\Carbon;
@@ -13,6 +14,8 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class SalesReport extends Page
 {
+    use HasDateRangePresets;
+
     protected string $view = 'filament.pages.sales-report';
 
     protected static \BackedEnum|string|null $navigationIcon = 'heroicon-o-chart-bar';
@@ -123,6 +126,11 @@ class SalesReport extends Page
             new SalesSummaryExport((string) $this->fromDate, (string) $this->toDate),
             'laporan-penjualan-'.$this->fromDate.'-'.$this->toDate.'.xlsx',
         );
+    }
+
+    protected function afterPeriodApplied(): void
+    {
+        $this->loadReport();
     }
 
     /** @return array<string, mixed> */

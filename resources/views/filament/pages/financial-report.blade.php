@@ -1,5 +1,12 @@
 <x-filament-panels::page>
     <x-filament::section>
+            <div class="mb-4 flex flex-wrap gap-2">
+                <x-filament::button type="button" size="xs" color="gray" outlined wire:click="applyPeriod('this_month')">Bulan Ini</x-filament::button>
+                <x-filament::button type="button" size="xs" color="gray" outlined wire:click="applyPeriod('last_month')">Bulan Lalu</x-filament::button>
+                <x-filament::button type="button" size="xs" color="gray" outlined wire:click="applyPeriod('this_quarter')">Kuartal Ini</x-filament::button>
+                <x-filament::button type="button" size="xs" color="gray" outlined wire:click="applyPeriod('this_year')">Tahun Ini</x-filament::button>
+            </div>
+
         <form wire:submit="updateReport" class="flex flex-col gap-4 sm:flex-row sm:items-end">
             <div class="w-full sm:w-52">
                 <label for="fromDate" class="mb-1 block text-sm font-medium text-gray-950 dark:text-white">Dari Tanggal</label>

@@ -50,6 +50,7 @@ class StockAdjustmentResource extends Resource
                     Select::make('warehouse_id')
                         ->label('Gudang')
                         ->required()
+                        ->searchable()
                         ->options(fn (): array => Warehouse::query()->orderBy('name')->pluck('name', 'id')->all()),
                     DatePicker::make('adjusted_at')->label('Tanggal Opname')->required()->default(now()->toDateString()),
                     TextInput::make('reason')->label('Alasan')->required()->maxLength(255),
@@ -116,7 +117,7 @@ class StockAdjustmentResource extends Resource
             TextColumn::make('items_count')->counts('items')->label('Item'),
         ])
             ->filters([
-                SelectFilter::make('warehouse_id')->label('Gudang')->relationship('warehouse', 'name'),
+                SelectFilter::make('warehouse_id')->label('Gudang')->relationship('warehouse', 'name')->searchable()->preload(),
                 SelectFilter::make('status')->options(['draft' => 'Draft', 'posted' => 'Posted']),
                 Filter::make('tanggal')
                     ->label('Rentang Tanggal')

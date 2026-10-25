@@ -3,9 +3,11 @@
 namespace App\Domain\Inventory\Models;
 
 use App\Models\User;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 use LogicException;
 
@@ -27,6 +29,7 @@ use LogicException;
  * @property-read Product $product
  * @property-read Warehouse $warehouse
  * @property-read User|null $creator
+ * @property-read Collection<int, StockLotAllocation> $lotAllocations
  */
 class StockLedger extends Model
 {
@@ -87,6 +90,12 @@ class StockLedger extends Model
     public function warehouse(): BelongsTo
     {
         return $this->belongsTo(Warehouse::class, 'warehouse_id');
+    }
+
+    /** @return HasMany<StockLotAllocation, $this> */
+    public function lotAllocations(): HasMany
+    {
+        return $this->hasMany(StockLotAllocation::class);
     }
 
     /** @return BelongsTo<User, $this> */

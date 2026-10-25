@@ -52,6 +52,7 @@ class PostStockAdjustmentAction
                         referenceId: $adjustment->id,
                         notes: "Stock opname {$adjustment->adjustment_number}",
                         createdBy: $postedBy,
+                        allowExpired: Money::compare($difference, '0') < 0,
                     ));
                 }
             }

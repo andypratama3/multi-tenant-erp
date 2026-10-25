@@ -31,14 +31,15 @@
                     <div class="grid gap-4 sm:grid-cols-12">
                         <div class="sm:col-span-6">
                             <label for="pos-product" class="mb-1 block text-sm font-medium text-gray-950 dark:text-white">Produk</label>
-                            <x-filament::input.wrapper>
-                                <x-filament::input.select id="pos-product" wire:model="productId">
-                                    <option value="">— Pilih produk —</option>
-                                    @foreach ($this->products() as $id => $label)
-                                        <option value="{{ $id }}">{{ $label }}</option>
-                                    @endforeach
-                                </x-filament::input.select>
-                            </x-filament::input.wrapper>
+                            <x-searchable-select
+                                id="pos-product"
+                                model="productId"
+                                :options="$this->products()"
+                                :value="$productId"
+                                placeholder="— Pilih produk —"
+                                search-placeholder="Cari nama atau SKU produk..."
+                                empty-text="Produk tidak ditemukan."
+                            />
                             @error('productId') <p class="mt-1 text-sm text-danger-600 dark:text-danger-400">{{ $message }}</p> @enderror
                         </div>
 
@@ -88,6 +89,33 @@
                                         <td class="px-2 py-3">
                                             <p class="font-medium text-gray-950 dark:text-white">{{ $item['name'] }}</p>
                                             <p class="text-xs text-gray-500 dark:text-gray-400">{{ $item['sku'] }}</p>
+                                            @if (! empty($item['expiry_date']))
+                                                @php
+                                                    $expiryDate = \Illuminate\Support\Carbon::parse($item['expiry_date']);
+                                                    $daysToExpiry = (int) today()->startOfDay()->diffInDays($expiryDate->startOfDay(), false);
+                                                    $expiryColor = match (true) {
+                                                        $daysToExpiry < 0 => 'danger',
+                                                        $daysToExpiry <= $item['expiry_alert_days'] => 'warning',
+                                                        default => 'success',
+                                                    };
+                                                @endphp
+                                                <span @class([
+                                                    'mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium',
+                                                    'bg-danger-50 text-danger-700 dark:bg-danger-500/10 dark:text-danger-300' => $expiryColor === 'danger',
+                                                    'bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300' => $expiryColor === 'warning',
+                                                    'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300' => $expiryColor === 'success',
+                                                ])>
+                                                    <x-filament::icon icon="heroicon-m-clock" class="size-3" />
+                                                    {{ $expiryDate->translatedFormat('d M Y') }}
+                                                    @if ($daysToExpiry < 0)
+                                                        · kedaluwarsa {{ abs($daysToExpiry) }} hari lalu
+                                                    @elseif ($daysToExpiry === 0)
+                                                        · kedaluwarsa hari ini
+                                                    @else
+                                                        · {{ $daysToExpiry }} hari lagi
+                                                    @endif
+                                                </span>
+                                            @endif
                                         </td>
                                         <td class="whitespace-nowrap px-2 py-3 text-right tabular-nums">
                                             {{ $item['quantity'] }}
@@ -126,39 +154,45 @@
                     <div class="space-y-4">
                         <div>
                             <label for="pos-customer" class="mb-1 block text-sm font-medium text-gray-950 dark:text-white">Pelanggan</label>
-                            <x-filament::input.wrapper>
-                                <x-filament::input.select id="pos-customer" wire:model="customerId">
-                                    <option value="">— Pilih pelanggan —</option>
-                                    @foreach ($this->customers() as $id => $label)
-                                        <option value="{{ $id }}">{{ $label }}</option>
-                                    @endforeach
-                                </x-filament::input.select>
-                            </x-filament::input.wrapper>
+                            <x-searchable-select
+                                id="pos-customer"
+                                model="customerId"
+                                :options="$this->customers()"
+                                :value="$customerId"
+                                placeholder="— Pilih pelanggan —"
+                                search-placeholder="Cari nama pelanggan..."
+                                empty-text="Pelanggan tidak ditemukan."
+                            />
                             @error('customerId') <p class="mt-1 text-sm text-danger-600 dark:text-danger-400">{{ $message }}</p> @enderror
                         </div>
 
                         <div>
                             <label for="pos-warehouse" class="mb-1 block text-sm font-medium text-gray-950 dark:text-white">Gudang</label>
-                            <x-filament::input.wrapper>
-                                <x-filament::input.select id="pos-warehouse" wire:model="warehouseId">
-                                    @foreach ($this->warehouses() as $id => $label)
-                                        <option value="{{ $id }}">{{ $label }}</option>
-                                    @endforeach
-                                </x-filament::input.select>
-                            </x-filament::input.wrapper>
+                            <x-searchable-select
+                                id="pos-warehouse"
+                                model="warehouseId"
+                                :options="$this->warehouses()"
+                                :value="$warehouseId"
+                                placeholder="— Pilih gudang —"
+                                search-placeholder="Cari gudang..."
+                                empty-text="Gudang tidak ditemukan."
+                                :clearable="false"
+                            />
                             @error('warehouseId') <p class="mt-1 text-sm text-danger-600 dark:text-danger-400">{{ $message }}</p> @enderror
                         </div>
 
                         <div>
                             <label for="pos-payment-method" class="mb-1 block text-sm font-medium text-gray-950 dark:text-white">Metode Pembayaran</label>
-                            <x-filament::input.wrapper>
-                                <x-filament::input.select id="pos-payment-method" wire:model="paymentMethod">
-                                    <option value="cash">Tunai</option>
-                                    <option value="transfer">Transfer Bank</option>
-                                    <option value="qris">QRIS</option>
-                                    <option value="other">Lainnya</option>
-                                </x-filament::input.select>
-                            </x-filament::input.wrapper>
+                            <x-searchable-select
+                                id="pos-payment-method"
+                                model="paymentMethod"
+                                :options="['cash' => 'Tunai', 'transfer' => 'Transfer Bank', 'qris' => 'QRIS', 'other' => 'Lainnya']"
+                                :value="$paymentMethod"
+                                placeholder="— Pilih metode —"
+                                search-placeholder="Cari metode pembayaran..."
+                                empty-text="Metode tidak ditemukan."
+                                :clearable="false"
+                            />
                             @error('paymentMethod') <p class="mt-1 text-sm text-danger-600 dark:text-danger-400">{{ $message }}</p> @enderror
                         </div>
 

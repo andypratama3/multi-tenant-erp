@@ -17,6 +17,9 @@ use Illuminate\Support\Carbon;
  * @property string|null $description
  * @property string|null $parent_id
  * @property bool $is_active
+ * @property bool $requires_expiry
+ * @property int|null $default_shelf_life_days
+ * @property int $default_expiry_alert_days
  * @property Carbon $created_at
  * @property Carbon $updated_at
  * @property Carbon|null $deleted_at
@@ -36,10 +39,16 @@ class ProductCategory extends Model
         'description',
         'parent_id',
         'is_active',
+        'requires_expiry',
+        'default_shelf_life_days',
+        'default_expiry_alert_days',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
+        'requires_expiry' => 'boolean',
+        'default_shelf_life_days' => 'integer',
+        'default_expiry_alert_days' => 'integer',
     ];
 
     /** @return BelongsTo<ProductCategory, $this> */

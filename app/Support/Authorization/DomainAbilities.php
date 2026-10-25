@@ -9,6 +9,7 @@ use App\Domain\Accounting\Models\Journal;
 use App\Domain\Inventory\Models\Product;
 use App\Domain\Inventory\Models\ProductCategory;
 use App\Domain\Inventory\Models\StockAdjustment;
+use App\Domain\Inventory\Models\StockLot;
 use App\Domain\Inventory\Models\Unit;
 use App\Domain\Inventory\Models\Warehouse;
 use App\Domain\Inventory\Models\WarehouseTransfer;
@@ -38,6 +39,7 @@ use App\Policies\SalesInvoicePolicy;
 use App\Policies\SalesOrderPolicy;
 use App\Policies\SalesReturnPolicy;
 use App\Policies\StockAdjustmentPolicy;
+use App\Policies\StockLotPolicy;
 use App\Policies\SupplierPaymentPolicy;
 use App\Policies\SupplierPolicy;
 use App\Policies\TaxRatePolicy;
@@ -71,6 +73,7 @@ final class DomainAbilities
         Unit::class => ['subject' => 'Unit', 'custom' => []],
         Warehouse::class => ['subject' => 'Warehouse', 'custom' => []],
         StockAdjustment::class => ['subject' => 'StockAdjustment', 'custom' => ['Post']],
+        StockLot::class => ['subject' => 'StockLot', 'custom' => []],
         WarehouseTransfer::class => ['subject' => 'WarehouseTransfer', 'custom' => ['Post']],
         Supplier::class => ['subject' => 'Supplier', 'custom' => []],
         PurchaseOrder::class => ['subject' => 'PurchaseOrder', 'custom' => ['Approve', 'Send', 'Cancel']],
@@ -99,6 +102,7 @@ final class DomainAbilities
             Unit::class => UnitPolicy::class,
             Warehouse::class => WarehousePolicy::class,
             StockAdjustment::class => StockAdjustmentPolicy::class,
+            StockLot::class => StockLotPolicy::class,
             WarehouseTransfer::class => WarehouseTransferPolicy::class,
             Supplier::class => SupplierPolicy::class,
             PurchaseOrder::class => PurchaseOrderPolicy::class,

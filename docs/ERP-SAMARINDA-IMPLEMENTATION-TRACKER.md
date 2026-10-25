@@ -7,7 +7,7 @@ Legenda: `[ ]` belum, `[~]` sebagian, `[x]` selesai + terverifikasi, `[-]` ditun
 
 ## Baseline Terkini
 
-- [x] `php artisan test` — 107 passed, 250 assertions
+- [x] `php artisan test` — 120 passed, 283 assertions
 - [x] `vendor/bin/phpstan analyse` — 0 error
 - [x] `vendor/bin/pint --test` — passed
 - [x] Migrasi `notifications`, `media`, `document_sequences` sudah dijalankan
@@ -73,7 +73,7 @@ Legenda: `[ ]` belum, `[~]` sebagian, `[x]` selesai + terverifikasi, `[-]` ditun
 ## Fase UI Interaktif
 
 - [~] Fondasi `Money`, format dokumen, label Indonesia; `StatusBadge`/`HasDocumentActions` belum diekstrak
-- [~] Select searchable/preload pada relasi besar; async search belum diterapkan
+- [x] Select searchable/preload pada relasi besar, filter resource, dan komponen searchable POS; async search belum diperlukan untuk volume data saat ini
 - [x] Form transaksi live + validasi + prefill lintas dokumen (PO → GRN, SO → invoice/delivery)
 - [x] Tabel interaktif: filter status/pihak/rentang tanggal, empty state, ringkasan total, aksi kontekstual
 - [~] Export tabel transaksi dan bulk action lanjutan belum ada
@@ -96,6 +96,10 @@ Legenda: `[ ]` belum, `[~]` sebagian, `[x]` selesai + terverifikasi, `[-]` ditun
 - Period lock ditegakkan di `PostJournalAction`; pengaturan perusahaan dikelola via halaman `super_admin`.
 - POS memakai alur SO → konfirmasi → invoice → pembayaran tunai → delivery/posting stok dalam satu transaksi.
 - Export e-Faktur menghasilkan CSV per periode dari invoice ber-PPN; NPWP pelanggan wajib diisi untuk hasil lengkap.
+- Produk ber-`requires_expiry` memakai batch FEFO; penjualan/transfer hanya memakai lot belum kedaluwarsa, sedangkan opname negatif boleh menghapus lot kedaluwarsa.
+- Penerimaan tanpa tanggal kedaluwarsa memakai `received_at + shelf_life_days`; produk tanpa umur simpan wajib mengisi expiry manual.
+- POS menampilkan sisa hari kedaluwarsa dan memakai stok lot sellable, bukan agregat `stock_balances`.
+- Transfer antar gudang menyalin nomor batch, expiry, dan harga pokok dari alokasi lot asal.
 
 ## Audit & Hardening
 
@@ -117,6 +121,10 @@ Legenda: `[ ]` belum, `[~]` sebagian, `[x]` selesai + terverifikasi, `[-]` ditun
 - [x] Period lock + pengaturan identitas perusahaan
 - [x] POS/kasir desktop (tanpa scan barcode)
 - [x] Export e-Faktur CSV per periode
+- [x] Batch & kedaluwarsa: skema lot/alokasi, FEFO, blokir stok kedaluwarsa, write-off via opname
+- [x] Penerimaan GRN menyimpan nomor batch dan tanggal kedaluwarsa + fallback umur simpan
+- [x] Resource Batch & Kedaluwarsa, widget peringatan, badge expiry POS, preservasi lot saat transfer
+- [x] Preset periode laporan penjualan, AP aging, keuangan, dan e-Faktur
 
 ## Log Verifikasi
 
@@ -128,3 +136,4 @@ Legenda: `[ ]` belum, `[~]` sebagian, `[x]` selesai + terverifikasi, `[-]` ditun
 | 2026-10-25 | Audit UI/keamanan, filter, chart arus kas, aksi view, refund retur, guard void | 98 passed, 228 assertions | 0 error | passed |
 | 2026-10-25 | Hardening POS, smoke test resource, panel `/dashboard`, tema Filament, lokalisasi label | 106 passed, 236 assertions | 0 error | passed |
 | 2026-10-25 | Polish laporan (ringkasan & baris total), POS (select Filament, sticky pembayaran, empty state), pengaturan & e-Faktur | 107 passed, 250 assertions | 0 error | passed |
+| 2026-10-25 | Batch & kedaluwarsa (lot/FEFO/GRN/POS/transfer/widget), select searchable, preset periode laporan | 120 passed, 283 assertions | 0 error | passed |

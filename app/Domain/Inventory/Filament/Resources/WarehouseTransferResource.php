@@ -50,10 +50,12 @@ class WarehouseTransferResource extends Resource
                     Select::make('from_warehouse_id')
                         ->label('Gudang Asal')
                         ->required()
+                        ->searchable()
                         ->options(fn (): array => Warehouse::query()->orderBy('name')->pluck('name', 'id')->all()),
                     Select::make('to_warehouse_id')
                         ->label('Gudang Tujuan')
                         ->required()
+                        ->searchable()
                         ->options(fn (): array => Warehouse::query()->orderBy('name')->pluck('name', 'id')->all())
                         ->different('from_warehouse_id'),
                     DatePicker::make('transferred_at')->label('Tanggal Transfer')->required()->default(now()->toDateString()),
@@ -118,8 +120,8 @@ class WarehouseTransferResource extends Resource
             TextColumn::make('items_count')->counts('items')->label('Item'),
         ])
             ->filters([
-                SelectFilter::make('from_warehouse_id')->label('Gudang Asal')->relationship('fromWarehouse', 'name'),
-                SelectFilter::make('to_warehouse_id')->label('Gudang Tujuan')->relationship('toWarehouse', 'name'),
+                SelectFilter::make('from_warehouse_id')->label('Gudang Asal')->relationship('fromWarehouse', 'name')->searchable()->preload(),
+                SelectFilter::make('to_warehouse_id')->label('Gudang Tujuan')->relationship('toWarehouse', 'name')->searchable()->preload(),
                 SelectFilter::make('status')->options(['draft' => 'Draft', 'posted' => 'Posted']),
                 Filter::make('tanggal')
                     ->label('Rentang Tanggal')
