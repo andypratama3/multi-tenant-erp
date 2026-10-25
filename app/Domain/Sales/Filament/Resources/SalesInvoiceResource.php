@@ -15,9 +15,11 @@ use App\Domain\Sales\Models\SalesReturn;
 use App\Domain\Sales\Pdfs\SalesInvoicePdf;
 use App\Filament\Support\DocumentTimeline;
 use App\Support\Money;
+use App\Support\Taxes\TaxDefaults;
 use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -67,17 +69,67 @@ class SalesInvoiceResource extends Resource
                     ->limit(50)
                     ->pluck('name', 'id')
                     ->all())
-                ->getOptionLabelUsing(fn (string $value): ?string => Customer::query()->whereKey($value)->value('name')),
+                ->getOptionLabelUsing(fn (string $value): ?string => Customer::query()->whereKey($value)->value('name'))
+                ->live()
+                ->afterStateUpdated(function (?string $state, Set $set): void {
+                    if ($state === null || $state === '') {
+                        return;
+                    }
+
+                    $customer = Customer::query()->find($state);
+
+                    if ($customer !== null) {
+                        $set('due_at', now()->addDays($customer->payment_terms_days)->toDateString());
+                    }
+                }),
             Select::make('sales_order_id')
                 ->label('Pesanan Penjualan')
                 ->searchable()
                 ->nullable()
+                ->live()
+                ->helperText('Pilih pesanan untuk mengisi pelanggan dan item secara otomatis.')
                 ->options(fn (): array => SalesOrder::query()
-                    ->whereIn('status', ['confirmed', 'partial'])
+                    ->whereIn('status', ['confirmed', 'partial', 'fulfilled'])
                     ->latest()
-                    ->limit(50)
+                    ->limit(100)
                     ->pluck('so_number', 'id')
-                    ->all()),
+                    ->all())
+                ->afterStateUpdated(function (?string $state, Set $set): void {
+                    if ($state === null || $state === '') {
+                        return;
+                    }
+
+                    $salesOrder = SalesOrder::query()->with(['customer', 'items'])->find($state);
+
+                    if ($salesOrder === null) {
+                        return;
+                    }
+
+                    $paymentTerms = $salesOrder->customer === null ? 30 : $salesOrder->customer->payment_terms_days;
+
+                    $set('customer_id', $salesOrder->customer_id);
+                    $set('due_at', now()->addDays($paymentTerms)->toDateString());
+                    $set('items', $salesOrder->items
+                        ->filter(fn ($item): bool => bccomp(
+                            Money::decimal($item->quantity_ordered, 3),
+                            Money::decimal($item->quantity_invoiced, 3),
+                            3,
+                        ) === 1)
+                        ->map(fn ($item): array => [
+                            'sales_order_item_id' => $item->id,
+                            'product_id' => $item->product_id,
+                            'quantity' => Money::decimal(bcsub(
+                                Money::decimal($item->quantity_ordered, 3),
+                                Money::decimal($item->quantity_invoiced, 3),
+                                3,
+                            ), 3),
+                            'unit_price' => (string) $item->unit_price,
+                            'discount_rate' => (string) $item->discount_rate,
+                            'tax_rate' => (string) $item->tax_rate,
+                        ])
+                        ->values()
+                        ->all());
+                }),
             DatePicker::make('issued_at')
                 ->label('Tanggal Faktur')
                 ->required()
@@ -93,14 +145,20 @@ class SalesInvoiceResource extends Resource
             Repeater::make('items')
                 ->label('Item Faktur')
                 ->schema([
+                    Hidden::make('sales_order_item_id'),
                     Select::make('product_id')
                         ->label('Produk')
-                        ->options(fn (): array => Product::query()
+                        ->getSearchResultsUsing(fn (string $search): array => Product::query()
                             ->where('is_active', true)
+                            ->where(fn ($query) => $query
+                                ->where('name', 'like', "%{$search}%")
+                                ->orWhere('sku', 'like', "%{$search}%"))
                             ->orderBy('name')
                             ->limit(50)
-                            ->pluck('name', 'id')
+                            ->get()
+                            ->mapWithKeys(fn (Product $product): array => [$product->id => $product->sku.' — '.$product->name])
                             ->all())
+                        ->getOptionLabelUsing(fn (string $value): ?string => Product::query()->whereKey($value)->value('name'))
                         ->searchable()
                         ->required()
                         ->live()
@@ -142,9 +200,9 @@ class SalesInvoiceResource extends Resource
                         ->maxValue(100)
                         ->step('0.01')
                         ->suffix('%')
-                        ->default(0),
+                        ->default(fn (): string => TaxDefaults::ppnRate()),
                 ])
-                ->columns(5)
+                ->columns(6)
                 ->minItems(1)
                 ->defaultItems(1)
                 ->columnSpanFull(),
@@ -181,13 +239,18 @@ class SalesInvoiceResource extends Resource
                 ]),
             Section::make('Total')
                 ->schema([
-                    TextEntry::make('subtotal')->label('Subtotal')->money('IDR'),
-                    TextEntry::make('discount_amount')->label('Diskon')->money('IDR'),
+                    TextEntry::make('subtotal')->label('Subtotal (setelah diskon)')->money('IDR'),
+                    TextEntry::make('discount_amount')->label('Total Diskon')->money('IDR'),
                     TextEntry::make('tax_amount')->label('Pajak')->money('IDR'),
                     TextEntry::make('total')->label('Total')->money('IDR')->weight('bold'),
                     TextEntry::make('paid_amount')->label('Dibayar')->money('IDR'),
+                    TextEntry::make('returned_amount')->label('Diretur')->money('IDR'),
+                    TextEntry::make('outstanding')
+                        ->label('Sisa Tagihan')
+                        ->state(fn (SalesInvoice $record): string => Money::sub(Money::sub($record->total, $record->returned_amount), $record->paid_amount))
+                        ->money('IDR'),
                 ])
-                ->columns(5),
+                ->columns(6),
             Section::make('Riwayat Pembayaran')
                 ->schema([
                     RepeatableEntry::make('payments')
@@ -292,7 +355,7 @@ class SalesInvoiceResource extends Resource
                             ->required()
                             ->minValue(0.01)
                             ->prefix('Rp')
-                            ->default(fn (SalesInvoice $record): string => Money::round(Money::sub($record->total, $record->paid_amount))),
+                            ->default(fn (SalesInvoice $record): string => Money::round(Money::sub(Money::sub($record->total, $record->returned_amount), $record->paid_amount))),
                         DatePicker::make('paid_at')
                             ->label('Tanggal Bayar')
                             ->required()
@@ -339,7 +402,10 @@ class SalesInvoiceResource extends Resource
                     ->color('danger')
                     ->requiresConfirmation()
                     ->authorize('void')
-                    ->visible(fn (SalesInvoice $record): bool => ! in_array($record->status, ['cancelled', 'paid'], true))
+                    ->visible(fn (SalesInvoice $record): bool => ! in_array($record->status, ['cancelled', 'paid'], true)
+                        && ! Money::isPositive($record->returned_amount)
+                        && ($record->returns_count ?? 0) === 0
+                        && ! ($record->salesOrder?->deliveries()->exists() ?? false))
                     ->schema([
                         Textarea::make('reason')
                             ->label('Alasan Pembatalan')
@@ -368,7 +434,7 @@ class SalesInvoiceResource extends Resource
     /** @return Builder<Model> */
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->with(['customer']);
+        return parent::getEloquentQuery()->with(['customer', 'salesOrder'])->withCount('returns');
     }
 
     public static function getPages(): array

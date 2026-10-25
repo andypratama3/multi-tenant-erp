@@ -88,3 +88,42 @@ it('rejects payment below the cart total', function () {
 
     expect(SalesInvoice::count())->toBe(0);
 });
+
+it('allows cashiers but blocks sales role from opening the pos page', function () {
+    $this->actingAs(User::factory()->create()->assignRole('kasir'));
+    $this->get(PosPage::getUrl())->assertOk();
+
+    $this->actingAs(User::factory()->create()->assignRole('sales'));
+    $this->get(PosPage::getUrl())->assertForbidden();
+});
+
+it('ignores tampered client-side prices and taxes', function () {
+    Livewire::test(PosPage::class)
+        ->set('customerId', $this->customer->id)
+        ->set('warehouseId', $this->warehouse->id)
+        ->set('productId', $this->product->id)
+        ->set('quantity', '2')
+        ->call('addProduct')
+        ->set('cart.'.$this->product->id.'.unit_price', '0.0000')
+        ->set('cart.'.$this->product->id.'.tax_rate', '0.00')
+        ->set('amountPaid', '22200')
+        ->call('process')
+        ->assertHasNoErrors();
+
+    $invoice = SalesInvoice::query()->firstOrFail();
+
+    expect($invoice->total)->toBe('22200.00')
+        ->and($invoice->tax_amount)->toBe('2200.00');
+});
+
+it('blocks adding more quantity than available stock', function () {
+    Livewire::test(PosPage::class)
+        ->set('customerId', $this->customer->id)
+        ->set('warehouseId', $this->warehouse->id)
+        ->set('productId', $this->product->id)
+        ->set('quantity', '11')
+        ->call('addProduct')
+        ->assertHasErrors(['quantity']);
+
+    expect(SalesInvoice::count())->toBe(0);
+});

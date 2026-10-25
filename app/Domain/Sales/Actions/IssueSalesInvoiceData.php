@@ -5,7 +5,7 @@ namespace App\Domain\Sales\Actions;
 final class IssueSalesInvoiceData
 {
     /**
-     * @param  array<int, array{product_id: string, quantity: string, unit_price: string, discount_rate: string, tax_rate: string}>  $items
+     * @param  array<int, array{sales_order_item_id?: string|null, product_id: string, quantity: string, unit_price: string, discount_rate: string, tax_rate: string}>  $items
      */
     public function __construct(
         public readonly ?string $salesOrderId,

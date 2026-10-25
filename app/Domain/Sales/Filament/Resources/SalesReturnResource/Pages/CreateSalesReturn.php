@@ -53,6 +53,7 @@ class CreateSalesReturn extends CreateRecord
                 returnedAt: (string) $data['returned_at'],
                 reason: (string) $data['reason'],
                 items: $items,
+                refundMethod: (string) ($data['refund_method'] ?? 'cash'),
                 createdBy: $createdBy !== null ? (string) $createdBy : null,
             ));
         } catch (Throwable $exception) {

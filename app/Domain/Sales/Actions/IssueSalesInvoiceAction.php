@@ -4,6 +4,8 @@ namespace App\Domain\Sales\Actions;
 
 use App\Domain\Accounting\Services\InvoiceJournalService;
 use App\Domain\Sales\Models\SalesInvoice;
+use App\Domain\Sales\Models\SalesOrder;
+use App\Domain\Sales\Models\SalesOrderItem;
 use App\Domain\Tax\Actions\RecordTaxTransactionAction;
 use App\Domain\Tax\Actions\RecordTaxTransactionData;
 use App\Domain\Tax\Models\TaxRate;
@@ -11,6 +13,7 @@ use App\Support\Documents\DocumentNumberGenerator;
 use App\Support\Money;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use InvalidArgumentException;
 
 class IssueSalesInvoiceAction
 {
@@ -21,6 +24,31 @@ class IssueSalesInvoiceAction
     public function execute(IssueSalesInvoiceData $data): SalesInvoice
     {
         return DB::transaction(function () use ($data): SalesInvoice {
+            /** @var SalesOrder|null $salesOrder */
+            $salesOrder = null;
+            /** @var array<string, numeric-string> $remainingByItem */
+            $remainingByItem = [];
+
+            if ($data->salesOrderId !== null) {
+                $salesOrder = SalesOrder::query()->with('items')->lockForUpdate()->findOrFail($data->salesOrderId);
+
+                if (! in_array($salesOrder->status, ['confirmed', 'partial', 'fulfilled'], true)) {
+                    throw new InvalidArgumentException('Pesanan penjualan belum siap difakturkan.');
+                }
+
+                if ($salesOrder->customer_id !== $data->customerId) {
+                    throw new InvalidArgumentException('Pelanggan faktur tidak sesuai dengan pesanan penjualan.');
+                }
+
+                foreach ($salesOrder->items as $soItem) {
+                    $remainingByItem[$soItem->id] = Money::decimal(bcsub(
+                        Money::decimal($soItem->quantity_ordered, 3),
+                        Money::decimal($soItem->quantity_invoiced, 3),
+                        3,
+                    ), 3);
+                }
+            }
+
             $subtotal = '0.00';
             $taxAmount = '0.00';
             $discountAmount = '0.00';
@@ -34,7 +62,19 @@ class IssueSalesInvoiceAction
                 $subtotal = Money::add($subtotal, $lineSubtotal);
                 $discountAmount = Money::add($discountAmount, $lineDiscount);
                 $taxAmount = Money::add($taxAmount, $lineTax);
-                $lines[] = ['item' => $item, 'subtotal' => $lineSubtotal];
+                $soItem = null;
+
+                if ($salesOrder !== null) {
+                    $soItem = $this->resolveSalesOrderItem($salesOrder, $remainingByItem, $item);
+
+                    $remainingByItem[$soItem->id] = bcsub(
+                        $remainingByItem[$soItem->id],
+                        Money::decimal($item['quantity'], 3),
+                        3,
+                    );
+                }
+
+                $lines[] = ['item' => $item, 'subtotal' => $lineSubtotal, 'so_item' => $soItem];
             }
 
             $total = Money::add($subtotal, $taxAmount);
@@ -65,6 +105,15 @@ class IssueSalesInvoiceAction
                     'tax_rate' => $item['tax_rate'],
                     'subtotal' => $line['subtotal'],
                 ]);
+
+                if ($line['so_item'] instanceof SalesOrderItem) {
+                    $line['so_item']->quantity_invoiced = Money::add(
+                        $line['so_item']->quantity_invoiced,
+                        $item['quantity'],
+                        3,
+                    );
+                    $line['so_item']->save();
+                }
             }
 
             if (Money::isPositive($taxAmount)) {
@@ -77,6 +126,43 @@ class IssueSalesInvoiceAction
 
             return $invoice->load('items');
         });
+    }
+
+    /**
+     * @param  array<string, numeric-string>  $remainingByItem
+     * @param  array{sales_order_item_id?: string|null, product_id: string, quantity: string, unit_price: string, discount_rate: string, tax_rate: string}  $item
+     */
+    private function resolveSalesOrderItem(SalesOrder $salesOrder, array $remainingByItem, array $item): SalesOrderItem
+    {
+        $quantity = Money::decimal($item['quantity'], 3);
+        $requestedId = $item['sales_order_item_id'] ?? null;
+
+        if (is_string($requestedId) && $requestedId !== '') {
+            /** @var SalesOrderItem|null $soItem */
+            $soItem = $salesOrder->items->firstWhere('id', $requestedId);
+
+            if ($soItem === null || $soItem->product_id !== $item['product_id']) {
+                throw new InvalidArgumentException('Item pesanan penjualan tidak sesuai dengan produk faktur.');
+            }
+
+            if (bccomp($quantity, $remainingByItem[$soItem->id] ?? '0', 3) === 1) {
+                throw new InvalidArgumentException('Jumlah faktur melebihi sisa pesanan untuk produk '.$soItem->product_id.'.');
+            }
+
+            return $soItem;
+        }
+
+        /** @var SalesOrderItem|null $soItem */
+        $soItem = $salesOrder->items->first(
+            fn (SalesOrderItem $candidate): bool => $candidate->product_id === $item['product_id']
+                && bccomp($quantity, $remainingByItem[$candidate->id] ?? '0', 3) <= 0,
+        );
+
+        if ($soItem === null) {
+            throw new InvalidArgumentException('Tidak ada sisa pesanan yang dapat difakturkan untuk produk '.$item['product_id'].'.');
+        }
+
+        return $soItem;
     }
 
     /**

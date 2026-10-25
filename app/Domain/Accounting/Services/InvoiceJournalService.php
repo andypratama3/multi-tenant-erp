@@ -29,7 +29,7 @@ class InvoiceJournalService
         $ppnOutput = $this->accountResolver->resolve('ppn_output');
 
         $total = (float) $invoice->total;
-        $subtotal = (float) $invoice->subtotal - (float) $invoice->discount_amount;
+        $subtotal = (float) $invoice->subtotal;
         $taxAmount = (float) $invoice->tax_amount;
 
         $lines = [

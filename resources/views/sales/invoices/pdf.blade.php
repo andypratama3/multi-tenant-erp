@@ -91,13 +91,13 @@
 <div class="totals">
     <table>
         <tr>
-            <td>Subtotal</td>
+            <td>Subtotal (setelah diskon)</td>
             <td class="text-right">{{ \App\Support\Money::formatIdr($invoice->subtotal) }}</td>
         </tr>
         @if((float)$invoice->discount_amount > 0)
         <tr>
-            <td>Diskon</td>
-            <td class="text-right">- {{ \App\Support\Money::formatIdr($invoice->discount_amount) }}</td>
+            <td>Total Diskon</td>
+            <td class="text-right">{{ \App\Support\Money::formatIdr($invoice->discount_amount) }}</td>
         </tr>
         @endif
         <tr>
@@ -115,7 +115,7 @@
         </tr>
         <tr>
             <td>Sisa</td>
-            <td class="text-right">{{ \App\Support\Money::formatIdr(\App\Support\Money::sub($invoice->total, $invoice->paid_amount)) }}</td>
+            <td class="text-right">{{ \App\Support\Money::formatIdr(\App\Support\Money::sub(\App\Support\Money::sub($invoice->total, $invoice->returned_amount), $invoice->paid_amount)) }}</td>
         </tr>
         @endif
     </table>

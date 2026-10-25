@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Domain\Inventory\Models\Product;
+use App\Domain\Inventory\Models\StockBalance;
 use App\Domain\Inventory\Models\Warehouse;
 use App\Domain\Sales\Actions\ConfirmSalesOrderAction;
 use App\Domain\Sales\Actions\ConfirmSalesOrderData;
@@ -17,13 +18,13 @@ use App\Domain\Sales\Actions\PostDeliveryData;
 use App\Domain\Sales\Actions\RecordPaymentAction;
 use App\Domain\Sales\Actions\RecordPaymentData;
 use App\Domain\Sales\Models\Customer;
-use App\Domain\Sales\Models\SalesInvoice;
-use App\Domain\Tax\Models\TaxRate;
 use App\Support\Money;
+use App\Support\Taxes\TaxDefaults;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use InvalidArgumentException;
 use Throwable;
 
 class PosPage extends Page
@@ -48,6 +49,8 @@ class PosPage extends Page
 
     public string $amountPaid = '0';
 
+    public string $paymentMethod = 'cash';
+
     public string $notes = '';
 
     /** @var array<string, array{product_id: string, name: string, sku: string, quantity: string, unit_price: string, tax_rate: string}> */
@@ -57,14 +60,22 @@ class PosPage extends Page
 
     public string $lastChange = '0.00';
 
+    public bool $processing = false;
+
     public static function canAccess(): bool
     {
-        return auth()->user()?->can('viewAny', SalesInvoice::class) ?? false;
+        $user = auth()->user();
+
+        return $user !== null
+            && $user->can('Create:SalesInvoice')
+            && $user->can('Confirm:SalesOrder')
+            && $user->can('Create:Delivery')
+            && $user->can('Post:Delivery');
     }
 
     public function mount(): void
     {
-        $this->warehouseId = (string) (Warehouse::query()->orderBy('name')->value('id') ?? '');
+        $this->warehouseId = (string) (Warehouse::query()->where('is_active', true)->orderBy('name')->value('id') ?? '');
         $this->customerId = (string) (Customer::query()->where('is_active', true)->orderBy('name')->value('id') ?? '');
     }
 
@@ -81,7 +92,11 @@ class PosPage extends Page
     /** @return array<string, string> */
     public function warehouses(): array
     {
-        return Warehouse::query()->orderBy('name')->pluck('name', 'id')->all();
+        return Warehouse::query()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->pluck('name', 'id')
+            ->all();
     }
 
     /** @return array<string, string> */
@@ -89,6 +104,7 @@ class PosPage extends Page
     {
         return Product::query()
             ->where('is_active', true)
+            ->where('is_stockable', true)
             ->orderBy('name')
             ->limit(300)
             ->get()
@@ -98,29 +114,56 @@ class PosPage extends Page
             ->all();
     }
 
+    /** @return numeric-string */
+    public function stockFor(string $productId): string
+    {
+        if ($this->warehouseId === '') {
+            return '0.000';
+        }
+
+        $stock = StockBalance::query()
+            ->where('product_id', $productId)
+            ->where('warehouse_id', $this->warehouseId)
+            ->value('quantity');
+
+        return $stock !== null ? Money::decimal((string) $stock, 3) : '0.000';
+    }
+
     public function addProduct(): void
     {
         $this->validate([
             'productId' => ['required', 'uuid'],
             'quantity' => ['required', 'numeric', 'min:0.001'],
+            'warehouseId' => ['required', 'uuid'],
         ]);
 
-        $product = Product::query()->where('is_active', true)->find($this->productId);
+        $product = Product::query()
+            ->where('is_active', true)
+            ->where('is_stockable', true)
+            ->find($this->productId);
 
         if ($product === null) {
-            throw ValidationException::withMessages(['productId' => 'Produk tidak ditemukan.']);
+            throw ValidationException::withMessages(['productId' => 'Produk tidak ditemukan atau tidak dikelola stoknya.']);
         }
 
         $quantity = Money::round($this->quantity, 3);
         $existing = $this->cart[$product->id] ?? null;
+        $newQuantity = $existing !== null ? Money::add($existing['quantity'], $quantity, 3) : $quantity;
+        $available = $this->stockFor($product->id);
+
+        if (bccomp($newQuantity, $available, 3) === 1) {
+            throw ValidationException::withMessages([
+                'quantity' => "Stok tersedia hanya {$available} untuk {$product->name}.",
+            ]);
+        }
 
         $this->cart[$product->id] = [
             'product_id' => $product->id,
             'name' => $product->name,
             'sku' => $product->sku,
-            'quantity' => $existing !== null ? Money::add($existing['quantity'], $quantity, 3) : $quantity,
+            'quantity' => $newQuantity,
             'unit_price' => $product->selling_price,
-            'tax_rate' => $this->defaultTaxRate(),
+            'tax_rate' => TaxDefaults::ppnRate(),
         ];
 
         $this->productId = '';
@@ -136,6 +179,22 @@ class PosPage extends Page
     {
         $this->cart = [];
         $this->amountPaid = '0';
+        $this->lastChange = '0.00';
+    }
+
+    public function setExactAmount(): void
+    {
+        $this->amountPaid = $this->total();
+    }
+
+    public function addCash(int $amount): void
+    {
+        $this->amountPaid = Money::add($this->amountPaid, $amount);
+    }
+
+    public function dismissLastReceipt(): void
+    {
+        $this->lastInvoiceNumber = null;
         $this->lastChange = '0.00';
     }
 
@@ -180,37 +239,63 @@ class PosPage extends Page
 
     public function process(): void
     {
-        $this->validate([
-            'customerId' => ['required', 'uuid'],
-            'warehouseId' => ['required', 'uuid'],
-            'amountPaid' => ['required', 'numeric', 'min:0'],
-        ]);
-
-        if ($this->cart === []) {
-            throw ValidationException::withMessages(['cart' => 'Keranjang masih kosong.']);
+        if ($this->processing) {
+            return;
         }
 
-        $total = $this->total();
-
-        if (Money::compare($this->amountPaid, $total) === -1) {
-            throw ValidationException::withMessages(['amountPaid' => 'Pembayaran kurang dari total belanja.']);
-        }
-
-        $createdBy = auth()->id();
-        $createdByString = $createdBy !== null ? (string) $createdBy : null;
-        $change = $this->change();
+        $this->processing = true;
 
         try {
-            $invoiceNumber = DB::transaction(function () use ($total, $createdByString): string {
-                $items = [];
+            $this->validate([
+                'customerId' => ['required', 'uuid'],
+                'warehouseId' => ['required', 'uuid'],
+                'amountPaid' => ['required', 'numeric', 'min:0'],
+                'paymentMethod' => ['required', 'in:cash,transfer,qris,other'],
+                'notes' => ['nullable', 'string', 'max:500'],
+            ]);
 
-                foreach ($this->cart as $item) {
-                    $items[] = [
-                        'product_id' => $item['product_id'],
-                        'quantity_ordered' => $item['quantity'],
-                        'unit_price' => $item['unit_price'],
+            if ($this->cart === []) {
+                throw ValidationException::withMessages(['cart' => 'Keranjang masih kosong.']);
+            }
+
+            $lines = $this->validatedLines();
+            $serverSubtotal = '0.00';
+            $serverTax = '0.00';
+
+            foreach ($lines as $line) {
+                $serverSubtotal = Money::add($serverSubtotal, $line['subtotal']);
+                $serverTax = Money::add($serverTax, $line['tax_amount']);
+            }
+
+            $serverTotal = Money::add($serverSubtotal, $serverTax);
+
+            if (Money::compare($this->amountPaid, $serverTotal) === -1) {
+                throw ValidationException::withMessages(['amountPaid' => 'Pembayaran kurang dari total belanja.']);
+            }
+
+            $createdBy = auth()->id();
+            $createdByString = $createdBy !== null ? (string) $createdBy : null;
+            $change = Money::sub($this->amountPaid, $serverTotal);
+            $notes = $this->notes !== '' ? $this->notes : 'POS';
+
+            $invoiceNumber = DB::transaction(function () use ($lines, $serverTotal, $createdByString, $notes): string {
+                $orderItems = [];
+                $invoiceItems = [];
+
+                foreach ($lines as $line) {
+                    $orderItems[] = [
+                        'product_id' => $line['product_id'],
+                        'quantity_ordered' => $line['quantity'],
+                        'unit_price' => $line['unit_price'],
                         'discount_rate' => '0.00',
-                        'tax_rate' => $item['tax_rate'],
+                        'tax_rate' => $line['tax_rate'],
+                    ];
+                    $invoiceItems[] = [
+                        'product_id' => $line['product_id'],
+                        'quantity' => $line['quantity'],
+                        'unit_price' => $line['unit_price'],
+                        'discount_rate' => '0.00',
+                        'tax_rate' => $line['tax_rate'],
                     ];
                 }
 
@@ -218,27 +303,15 @@ class PosPage extends Page
                     customerId: $this->customerId,
                     orderedAt: now()->toDateString(),
                     requiredAt: now()->toDateString(),
-                    notes: $this->notes !== '' ? $this->notes : 'POS',
+                    notes: $notes,
                     createdBy: $createdByString,
-                    items: $items,
+                    items: $orderItems,
                 ));
 
                 app(ConfirmSalesOrderAction::class)->execute(new ConfirmSalesOrderData(
                     salesOrderId: $order->id,
                     confirmedBy: $createdByString,
                 ));
-
-                $invoiceItems = [];
-
-                foreach ($this->cart as $item) {
-                    $invoiceItems[] = [
-                        'product_id' => $item['product_id'],
-                        'quantity' => $item['quantity'],
-                        'unit_price' => $item['unit_price'],
-                        'discount_rate' => '0.00',
-                        'tax_rate' => $item['tax_rate'],
-                    ];
-                }
 
                 $invoice = app(IssueSalesInvoiceAction::class)->execute(new IssueSalesInvoiceData(
                     salesOrderId: $order->id,
@@ -248,14 +321,14 @@ class PosPage extends Page
                     createdBy: $createdByString,
                     items: $invoiceItems,
                     postJournal: true,
-                    notes: 'POS',
+                    notes: $notes,
                 ));
 
                 app(RecordPaymentAction::class)->execute(new RecordPaymentData(
                     invoiceId: $invoice->id,
-                    amount: $total,
+                    amount: $serverTotal,
                     paidAt: now()->toDateString(),
-                    paymentMethod: 'cash',
+                    paymentMethod: $this->paymentMethod,
                     reference: 'POS',
                     notes: 'Pembayaran POS',
                     createdBy: $createdByString,
@@ -266,7 +339,7 @@ class PosPage extends Page
                     salesOrderId: $order->id,
                     warehouseId: $this->warehouseId,
                     shippedAt: now()->toDateString(),
-                    notes: 'POS',
+                    notes: $notes,
                     createdBy: $createdByString,
                     items: [],
                 ));
@@ -282,13 +355,15 @@ class PosPage extends Page
             $this->lastInvoiceNumber = $invoiceNumber;
             $this->clearCart();
             $this->notes = '';
-            $this->lastChange = $change;
+            $this->lastChange = Money::compare($change, '0') === 1 ? $change : '0.00';
 
             Notification::make()
                 ->title('Transaksi POS berhasil')
-                ->body('Invoice '.$this->lastInvoiceNumber.' berhasil dibayar. Kembalian: '.Money::formatIdr($change))
+                ->body('Invoice '.$this->lastInvoiceNumber.' berhasil dibayar. Kembalian: '.Money::formatIdr($this->lastChange))
                 ->success()
                 ->send();
+        } catch (ValidationException $exception) {
+            throw $exception;
         } catch (Throwable $exception) {
             report($exception);
 
@@ -297,17 +372,58 @@ class PosPage extends Page
                 ->body($exception->getMessage())
                 ->danger()
                 ->send();
+        } finally {
+            $this->processing = false;
         }
     }
 
-    private function defaultTaxRate(): string
+    /**
+     * Re-read every cart line from the database so the client cannot alter
+     * price, tax, product identity, or stock availability.
+     *
+     * @return array<int, array{product_id: string, quantity: string, unit_price: string, tax_rate: string, subtotal: string, tax_amount: string}>
+     */
+    private function validatedLines(): array
     {
-        $rate = TaxRate::query()
-            ->where('type', 'ppn')
-            ->where('is_active', true)
-            ->latest()
-            ->value('rate');
+        $lines = [];
 
-        return $rate !== null ? Money::decimal((string) $rate, 2) : '11.00';
+        foreach ($this->cart as $productId => $item) {
+            $product = Product::query()
+                ->whereKey($productId)
+                ->where('is_active', true)
+                ->where('is_stockable', true)
+                ->first();
+
+            if ($product === null) {
+                throw new InvalidArgumentException('Produk pada keranjang tidak lagi tersedia.');
+            }
+
+            $quantity = Money::round($item['quantity'], 3);
+
+            if (! Money::isPositive($quantity)) {
+                throw new InvalidArgumentException('Jumlah produk harus lebih besar dari nol.');
+            }
+
+            $available = $this->stockFor($product->id);
+
+            if (bccomp($quantity, $available, 3) === 1) {
+                throw new InvalidArgumentException("Stok {$product->name} tidak cukup. Tersedia {$available}.");
+            }
+
+            $unitPrice = Money::decimal($product->selling_price, 4);
+            $taxRate = TaxDefaults::ppnRate();
+            $subtotal = Money::round(Money::mul($quantity, $unitPrice, 4));
+
+            $lines[] = [
+                'product_id' => $product->id,
+                'quantity' => $quantity,
+                'unit_price' => $unitPrice,
+                'tax_rate' => $taxRate,
+                'subtotal' => $subtotal,
+                'tax_amount' => Money::percentage($subtotal, $taxRate),
+            ];
+        }
+
+        return $lines;
     }
 }

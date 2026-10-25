@@ -3,6 +3,7 @@
 namespace App\Domain\Inventory\Filament\Resources\StockAdjustmentResource\Pages;
 
 use App\Domain\Inventory\Filament\Resources\StockAdjustmentResource;
+use App\Filament\Support\DocumentActions;
 use Filament\Resources\Pages\ViewRecord;
 use Illuminate\Database\Eloquent\Model;
 
@@ -13,5 +14,12 @@ class ViewStockAdjustment extends ViewRecord
     protected function resolveRecord(int|string $key): Model
     {
         return parent::resolveRecord($key)->load(['warehouse', 'items.product', 'activities.causer']);
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            DocumentActions::stockAdjustmentPost(),
+        ];
     }
 }

@@ -44,6 +44,7 @@ class CreateSalesInvoice extends CreateRecord
                 3,
             ) === 1)
             ->map(fn (SalesOrderItem $item): array => [
+                'sales_order_item_id' => $item->id,
                 'product_id' => $item->product_id,
                 'quantity' => Money::decimal(bcsub(
                     Money::decimal($item->quantity_ordered, 3),

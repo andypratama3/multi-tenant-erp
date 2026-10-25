@@ -46,7 +46,7 @@ final class DocumentFormData
     }
 
     /**
-     * @return array<int, array{product_id: string, quantity: string, unit_price: string, discount_rate: string, tax_rate: string}>
+     * @return array<int, array{sales_order_item_id: string|null, product_id: string, quantity: string, unit_price: string, discount_rate: string, tax_rate: string}>
      */
     public static function invoiceItems(mixed $items): array
     {
@@ -54,6 +54,9 @@ final class DocumentFormData
 
         foreach (self::rows($items) as $item) {
             $mapped[] = [
+                'sales_order_item_id' => isset($item['sales_order_item_id']) && is_scalar($item['sales_order_item_id']) && (string) $item['sales_order_item_id'] !== ''
+                    ? (string) $item['sales_order_item_id']
+                    : null,
                 'product_id' => self::value($item['product_id'] ?? null),
                 'quantity' => self::value($item['quantity'] ?? null),
                 'unit_price' => self::value($item['unit_price'] ?? null),

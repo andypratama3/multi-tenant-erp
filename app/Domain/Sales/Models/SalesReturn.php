@@ -23,6 +23,8 @@ use Spatie\Activitylog\Support\LogOptions;
  * @property string $subtotal
  * @property string $tax_amount
  * @property string $total
+ * @property string $refund_amount
+ * @property string $refund_method
  * @property string $reason
  * @property string|null $created_by
  */
@@ -39,6 +41,8 @@ class SalesReturn extends Model
         'subtotal',
         'tax_amount',
         'total',
+        'refund_amount',
+        'refund_method',
         'reason',
         'created_by',
     ];
@@ -51,6 +55,7 @@ class SalesReturn extends Model
             'subtotal' => 'decimal:2',
             'tax_amount' => 'decimal:2',
             'total' => 'decimal:2',
+            'refund_amount' => 'decimal:2',
         ];
     }
 

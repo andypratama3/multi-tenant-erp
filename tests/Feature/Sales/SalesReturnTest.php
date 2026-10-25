@@ -12,6 +12,8 @@ use App\Domain\Sales\Actions\CreateSalesReturnAction;
 use App\Domain\Sales\Actions\CreateSalesReturnData;
 use App\Domain\Sales\Actions\IssueSalesInvoiceAction;
 use App\Domain\Sales\Actions\IssueSalesInvoiceData;
+use App\Domain\Sales\Actions\RecordPaymentAction;
+use App\Domain\Sales\Actions\RecordPaymentData;
 use App\Domain\Sales\Exceptions\ReturnQuantityExceedsInvoiceException;
 use App\Domain\Sales\Models\Customer;
 use App\Domain\Sales\Models\SalesInvoice;
@@ -22,6 +24,7 @@ uses(RefreshDatabase::class);
 beforeEach(function () {
     foreach ([
         ['code' => '1-1000', 'name' => 'Piutang', 'type' => 'asset', 'normal_balance' => 'debit'],
+        ['code' => '1-0001', 'name' => 'Kas', 'type' => 'asset', 'normal_balance' => 'debit'],
         ['code' => '2-1000', 'name' => 'PPN Keluaran', 'type' => 'liability', 'normal_balance' => 'credit'],
         ['code' => '4-0001', 'name' => 'Pendapatan', 'type' => 'revenue', 'normal_balance' => 'credit'],
     ] as $account) {
@@ -139,4 +142,91 @@ it('rejects cancelled invoices', function () {
                 'restock' => false,
             ]],
         )))->toThrow(InvalidArgumentException::class);
+});
+
+it('rejects duplicate rows that together exceed the remaining quantity', function () {
+    $invoiceItem = $this->invoice->items->firstOrFail();
+
+    expect(fn () => (new CreateSalesReturnAction(new RecordStockMovementAction))
+        ->execute(new CreateSalesReturnData(
+            invoiceId: $this->invoice->id,
+            warehouseId: $this->warehouse->id,
+            returnedAt: '2026-10-05',
+            reason: 'Rusak',
+            items: [
+                ['sales_invoice_item_id' => $invoiceItem->id, 'quantity' => '1.500', 'restock' => false],
+                ['sales_invoice_item_id' => $invoiceItem->id, 'quantity' => '1.000', 'restock' => false],
+            ],
+        )))->toThrow(ReturnQuantityExceedsInvoiceException::class);
+});
+
+it('computes a proportional discounted subtotal for partial returns', function () {
+    $discounted = (new IssueSalesInvoiceAction)->execute(new IssueSalesInvoiceData(
+        salesOrderId: null,
+        customerId: $this->invoice->customer_id,
+        issuedAt: '2026-10-01',
+        dueAt: '2026-10-31',
+        createdBy: null,
+        items: [[
+            'product_id' => $this->product->id,
+            'quantity' => '2.000',
+            'unit_price' => '10000.0000',
+            'discount_rate' => '10.00',
+            'tax_rate' => '11.00',
+        ]],
+    ));
+
+    $return = (new CreateSalesReturnAction(new RecordStockMovementAction))
+        ->execute(new CreateSalesReturnData(
+            invoiceId: $discounted->id,
+            warehouseId: $this->warehouse->id,
+            returnedAt: '2026-10-05',
+            reason: 'Sebagian',
+            items: [[
+                'sales_invoice_item_id' => $discounted->items->firstOrFail()->id,
+                'quantity' => '1.000',
+                'restock' => false,
+            ]],
+        ));
+
+    expect($return->subtotal)->toBe('9000.00')
+        ->and($return->tax_amount)->toBe('990.00')
+        ->and($return->total)->toBe('9990.00');
+});
+
+it('refunds the paid portion instead of crediting receivables', function () {
+    $invoiceItem = $this->invoice->items->firstOrFail();
+
+    (new RecordPaymentAction)->execute(new RecordPaymentData(
+        invoiceId: $this->invoice->id,
+        amount: '22200.00',
+        paidAt: '2026-10-03',
+        paymentMethod: 'cash',
+        reference: null,
+        createdBy: null,
+        postJournal: true,
+    ));
+
+    $return = (new CreateSalesReturnAction(new RecordStockMovementAction))
+        ->execute(new CreateSalesReturnData(
+            invoiceId: $this->invoice->id,
+            warehouseId: $this->warehouse->id,
+            returnedAt: '2026-10-05',
+            reason: 'Dikembalikan setelah dibayar',
+            items: [[
+                'sales_invoice_item_id' => $invoiceItem->id,
+                'quantity' => '1.000',
+                'restock' => false,
+            ]],
+            refundMethod: 'cash',
+        ));
+
+    $journal = Journal::query()->with('lines')->where('reference_id', $return->id)->firstOrFail();
+    $cash = Account::query()->where('code', '1-0001')->firstOrFail();
+
+    expect($return->refund_amount)->toBe('11100.00')
+        ->and($return->invoice->fresh()->status)->toBe('paid')
+        ->and($journal->lines)->toHaveCount(3)
+        ->and($journal->lines->where('account_id', $cash->id)->sum('amount'))->toEqual(11100.0)
+        ->and($journal->lines->where('account_id', Account::query()->where('code', '1-1000')->value('id'))->sum('amount'))->toEqual(0.0);
 });

@@ -44,6 +44,18 @@ class PurchasingSummaryWidget extends BaseWidget
             ->where('is_active', true)
             ->count();
 
+        $outstandingAp = (string) DB::table('purchase_invoices')
+            ->whereNull('deleted_at')
+            ->whereIn('status', ['posted', 'partial'])
+            ->sum(DB::raw('total - paid_amount'));
+
+        $overdueAp = (int) DB::table('purchase_invoices')
+            ->whereNull('deleted_at')
+            ->whereIn('status', ['posted', 'partial'])
+            ->where('due_date', '<', today()->toDateString())
+            ->whereRaw('total > paid_amount')
+            ->count();
+
         return [
             Stat::make('PO Menunggu Penerimaan', $openPurchaseOrders)
                 ->description('Status terkirim atau sebagian')
@@ -61,11 +73,19 @@ class PurchasingSummaryWidget extends BaseWidget
                 ->description('Pemasok siap dipakai')
                 ->color('gray')
                 ->icon('heroicon-o-building-office'),
+            Stat::make('Utang Outstanding', Money::formatIdr($outstandingAp))
+                ->description('Belum dibayar ke pemasok')
+                ->color('warning')
+                ->icon('heroicon-o-credit-card'),
+            Stat::make('Utang Jatuh Tempo', $overdueAp)
+                ->description('Faktur pemasok lewat jatuh tempo')
+                ->color('danger')
+                ->icon('heroicon-o-exclamation-triangle'),
         ];
     }
 
     protected function getColumns(): int
     {
-        return 4;
+        return 3;
     }
 }

@@ -265,7 +265,7 @@ class GoodsReceiptNoteResource extends Resource
     /** @return Builder<Model> */
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->with(['purchaseOrder', 'warehouse']);
+        return parent::getEloquentQuery()->with(['purchaseOrder', 'warehouse', 'purchaseInvoice']);
     }
 
     public static function canDelete(Model $record): bool

@@ -4,6 +4,7 @@ namespace App\Providers\Filament;
 
 use App\Domain\Inventory\Filament\Widgets\LowStockWidget;
 use App\Filament\Pages\Dashboard;
+use App\Filament\Widgets\CashFlowChartWidget;
 use App\Filament\Widgets\OverdueInvoiceWidget;
 use App\Filament\Widgets\PurchasingSummaryWidget;
 use App\Filament\Widgets\SalesChartWidget;
@@ -57,6 +58,7 @@ class AdminPanelProvider extends PanelProvider
                 SalesChartWidget::class,
                 PurchasingSummaryWidget::class,
                 OverdueInvoiceWidget::class,
+                CashFlowChartWidget::class,
                 StockValuationWidget::class,
                 LowStockWidget::class,
             ])

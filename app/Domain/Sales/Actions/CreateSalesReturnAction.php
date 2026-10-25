@@ -39,6 +39,13 @@ class CreateSalesReturnAction
                 throw new InvalidArgumentException('Retur harus memiliki minimal satu item.');
             }
 
+            $requestedByItem = [];
+
+            foreach ($data->items as $row) {
+                $itemId = (string) $row['sales_invoice_item_id'];
+                $requestedByItem[$itemId] = Money::add($requestedByItem[$itemId] ?? '0.000', $row['quantity'], 3);
+            }
+
             $subtotal = '0.00';
             $taxAmount = '0.00';
             $total = '0.00';
@@ -69,17 +76,24 @@ class CreateSalesReturnAction
                     ->sum('quantity');
 
                 $available = Money::sub($invoiceItem->quantity, (string) $alreadyReturned);
+                $requested = $requestedByItem[$invoiceItem->id];
 
-                if (Money::compare($quantity, $available) === 1) {
+                if (Money::compare($requested, $available) === 1) {
                     throw new ReturnQuantityExceedsInvoiceException(
                         $product->name,
-                        $quantity,
+                        $requested,
                         $available,
                     );
                 }
 
-                $lineSubtotal = Money::round(Money::mul($quantity, $invoiceItem->unit_price, 4));
-                $lineTax = Money::round(Money::mul($lineSubtotal, Money::div($invoiceItem->tax_rate, '100', 6), 4));
+                $lineSubtotal = Money::compare($quantity, $invoiceItem->quantity) === 0
+                    ? Money::round($invoiceItem->subtotal)
+                    : Money::round(Money::mul(
+                        $invoiceItem->subtotal,
+                        Money::div($quantity, $invoiceItem->quantity, 6),
+                        4,
+                    ));
+                $lineTax = Money::percentage($lineSubtotal, $invoiceItem->tax_rate);
                 $lineTotal = Money::add($lineSubtotal, $lineTax);
 
                 $subtotal = Money::add($subtotal, $lineSubtotal);
@@ -97,6 +111,19 @@ class CreateSalesReturnAction
                 ];
             }
 
+            $outstanding = Money::sub(
+                Money::sub($invoice->total, $invoice->returned_amount),
+                $invoice->paid_amount,
+            );
+
+            if (! Money::isPositive($outstanding)) {
+                $outstanding = '0.00';
+            }
+
+            $refundAmount = Money::compare($total, $outstanding) === 1
+                ? Money::sub($total, $outstanding)
+                : '0.00';
+
             $return = SalesReturn::create([
                 'return_number' => app(DocumentNumberGenerator::class)->next('SR'),
                 'sales_invoice_id' => $invoice->id,
@@ -106,6 +133,8 @@ class CreateSalesReturnAction
                 'subtotal' => $subtotal,
                 'tax_amount' => $taxAmount,
                 'total' => $total,
+                'refund_amount' => $refundAmount,
+                'refund_method' => $data->refundMethod,
                 'reason' => $data->reason,
                 'created_by' => $data->createdBy,
             ]);
@@ -145,6 +174,16 @@ class CreateSalesReturnAction
             }
 
             $invoice->returned_amount = Money::add($invoice->returned_amount, $total);
+            $netTotal = Money::sub($invoice->total, $invoice->returned_amount);
+
+            if (! Money::isPositive($netTotal) || Money::compare($invoice->paid_amount, $netTotal) !== -1) {
+                $invoice->status = 'paid';
+            } elseif (Money::isPositive($invoice->paid_amount)) {
+                $invoice->status = 'partial';
+            } else {
+                $invoice->status = 'issued';
+            }
+
             $invoice->save();
 
             if ($data->postJournal) {

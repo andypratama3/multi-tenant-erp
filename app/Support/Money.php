@@ -36,21 +36,25 @@ final class Money
         return $value;
     }
 
+    /** @return numeric-string */
     public static function add(int|float|string $left, int|float|string $right, int $scale = self::SCALE): string
     {
         return bcadd(self::of($left), self::of($right), $scale);
     }
 
+    /** @return numeric-string */
     public static function sub(int|float|string $left, int|float|string $right, int $scale = self::SCALE): string
     {
         return bcsub(self::of($left), self::of($right), $scale);
     }
 
+    /** @return numeric-string */
     public static function mul(int|float|string $left, int|float|string $right, int $scale = self::COST_SCALE): string
     {
         return bcmul(self::of($left), self::of($right), $scale);
     }
 
+    /** @return numeric-string */
     public static function div(int|float|string $left, int|float|string $right, int $scale = self::COST_SCALE): string
     {
         if (bccomp(self::of($right), '0', self::COST_SCALE) === 0) {
@@ -63,11 +67,13 @@ final class Money
     /**
      * Apply a percentage (0-100) to an amount and round to 2 decimals.
      */
+    /** @return numeric-string */
     public static function percentage(int|float|string $amount, int|float|string $percent): string
     {
         return self::round(self::div(self::mul($amount, $percent, 6), '100', 6));
     }
 
+    /** @return numeric-string */
     public static function round(int|float|string $amount, int $scale = self::SCALE): string
     {
         $factor = bcpow('10', (string) $scale, 0);

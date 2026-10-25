@@ -76,11 +76,11 @@ class RolesAndPermissionsSeeder extends Seeder
             ],
             'kasir' => [
                 ...DomainAbilities::forSubject('Customer', ['ViewAny', 'View']),
-                ...DomainAbilities::forSubject('SalesOrder', ['ViewAny', 'View']),
+                ...DomainAbilities::forSubject('SalesOrder', ['ViewAny', 'View', 'Confirm']),
                 ...DomainAbilities::forSubject('SalesReturn', ['ViewAny', 'View', 'Create']),
                 ...DomainAbilities::forSubject('SalesInvoice', ['ViewAny', 'View', 'Create', 'RecordPayment', 'DownloadPdf']),
                 ...DomainAbilities::forSubject('Payment', ['ViewAny', 'View', 'Create']),
-                ...DomainAbilities::forSubject('Delivery', ['ViewAny', 'View']),
+                ...DomainAbilities::forSubject('Delivery', ['ViewAny', 'View', 'Create', 'Post']),
                 ...$this->productReads(),
             ],
             'pembelian' => [

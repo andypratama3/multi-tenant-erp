@@ -67,6 +67,11 @@ class SalesReturnResource extends Resource
                         ->options(fn (): array => Warehouse::query()->orderBy('name')->pluck('name', 'id')->all())
                         ->default(fn (): ?string => Warehouse::query()->orderBy('name')->value('id')),
                     DatePicker::make('returned_at')->label('Tanggal Retur')->required()->default(now()->toDateString()),
+                    Select::make('refund_method')
+                        ->label('Metode Pengembalian Dana')
+                        ->options(['cash' => 'Tunai', 'bank' => 'Transfer Bank'])
+                        ->default('cash')
+                        ->helperText('Dipakai hanya jika nilai retur melebihi sisa piutang (invoice sudah dibayar).'),
                     Textarea::make('reason')->label('Alasan Retur')->required()->rows(2)->columnSpanFull(),
                 ])
                 ->columns(3),
@@ -151,6 +156,8 @@ class SalesReturnResource extends Resource
                 ->schema([
                     TextEntry::make('subtotal')->label('Subtotal')->money('IDR'),
                     TextEntry::make('tax_amount')->label('PPN')->money('IDR'),
+                    TextEntry::make('refund_amount')->label('Dana Dikembalikan')->money('IDR'),
+                    TextEntry::make('refund_method')->label('Metode Refund')->formatStateUsing(fn (string $state): string => $state === 'cash' ? 'Tunai' : 'Transfer Bank'),
                     TextEntry::make('total')->label('Total Retur')->money('IDR')->weight('bold'),
                 ])
                 ->columns(3),

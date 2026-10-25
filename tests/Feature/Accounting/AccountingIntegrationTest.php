@@ -18,6 +18,8 @@ use App\Domain\Purchasing\Models\GoodsReceiptNote;
 use App\Domain\Purchasing\Models\GoodsReceiptNoteItem;
 use App\Domain\Purchasing\Models\Supplier;
 use App\Domain\Purchasing\Services\PurchaseNumberGenerator;
+use App\Domain\Sales\Actions\ConfirmSalesOrderAction;
+use App\Domain\Sales\Actions\ConfirmSalesOrderData;
 use App\Domain\Sales\Actions\CreateSalesOrderAction;
 use App\Domain\Sales\Actions\CreateSalesOrderData;
 use App\Domain\Sales\Actions\IssueSalesInvoiceAction;
@@ -106,6 +108,11 @@ it('posts an invoice journal with receivable and revenue entries', function () {
         notes: null,
         createdBy: null,
         items: [['product_id' => $product->id, 'quantity_ordered' => '5.000', 'unit_price' => '10000.0000', 'discount_rate' => '0.00', 'tax_rate' => '11.00']],
+    ));
+
+    (new ConfirmSalesOrderAction)->execute(new ConfirmSalesOrderData(
+        salesOrderId: $so->id,
+        confirmedBy: null,
     ));
 
     $invoice = (new IssueSalesInvoiceAction)->execute(new IssueSalesInvoiceData(

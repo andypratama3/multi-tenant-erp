@@ -15,5 +15,6 @@ final readonly class CreateSalesReturnData
         public array $items,
         public ?string $createdBy = null,
         public bool $postJournal = true,
+        public string $refundMethod = 'cash',
     ) {}
 }

@@ -19,6 +19,7 @@ use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
@@ -51,7 +52,22 @@ class PurchaseInvoiceResource extends Resource
                     Select::make('grn_id')
                         ->label('Penerimaan Barang (GRN)')
                         ->required()
+                        ->live()
                         ->searchable()
+                        ->afterStateUpdated(function (?string $state, Set $set): void {
+                            if ($state === null) {
+                                return;
+                            }
+
+                            $grn = GoodsReceiptNote::query()->with('purchaseOrder.supplier')->find($state);
+                            $terms = 30;
+
+                            if ($grn !== null && $grn->purchaseOrder !== null && $grn->purchaseOrder->supplier !== null) {
+                                $terms = $grn->purchaseOrder->supplier->payment_terms_days;
+                            }
+
+                            $set('due_date', now()->addDays($terms)->toDateString());
+                        })
                         ->options(fn (): array => GoodsReceiptNote::query()
                             ->with('purchaseOrder.supplier')
                             ->where('status', 'posted')
@@ -149,6 +165,11 @@ class PurchaseInvoiceResource extends Resource
             TextColumn::make('status')->label('Status')->badge(),
             TextColumn::make('total')->label('Total')->money('IDR')->summarize(Sum::make()->label('Total')->money('IDR')),
             TextColumn::make('paid_amount')->label('Dibayar')->money('IDR'),
+            TextColumn::make('outstanding')
+                ->label('Sisa Utang')
+                ->state(fn (PurchaseInvoice $record): string => Money::sub($record->total, $record->paid_amount))
+                ->money('IDR')
+                ->color(fn (PurchaseInvoice $record): string => $record->status !== 'paid' && $record->due_date->isPast() ? 'danger' : 'gray'),
         ])
             ->filters([
                 SelectFilter::make('status')
@@ -163,6 +184,29 @@ class PurchaseInvoiceResource extends Resource
                     ->label('Pemasok')
                     ->relationship('supplier', 'name')
                     ->searchable(),
+                Filter::make('jatuh_tempo')
+                    ->label('Jatuh Tempo')
+                    ->schema([
+                        DatePicker::make('from')->label('Dari'),
+                        DatePicker::make('until')->label('Sampai'),
+                    ])
+                    ->columns(2)
+                    ->query(function (Builder $query, array $data): Builder {
+                        if (is_string($data['from'] ?? null)) {
+                            $query->whereDate('due_date', '>=', $data['from']);
+                        }
+
+                        if (is_string($data['until'] ?? null)) {
+                            $query->whereDate('due_date', '<=', $data['until']);
+                        }
+
+                        return $query;
+                    }),
+                Filter::make('overdue')
+                    ->label('Lewat Jatuh Tempo')
+                    ->query(fn (Builder $query): Builder => $query
+                        ->whereDate('due_date', '<', now()->toDateString())
+                        ->whereIn('status', ['posted', 'partial'])),
                 Filter::make('tanggal')
                     ->label('Rentang Tanggal')
                     ->schema([

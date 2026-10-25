@@ -55,7 +55,8 @@ class RecordPaymentAction
 
             $newPaidAmount = Money::add($invoice->paid_amount, $data->amount);
             $invoice->paid_amount = $newPaidAmount;
-            $invoice->status = Money::compare($newPaidAmount, $invoice->total) >= 0 ? 'paid' : 'partial';
+            $payable = Money::sub($invoice->total, $invoice->returned_amount);
+            $invoice->status = Money::compare($newPaidAmount, $payable) >= 0 ? 'paid' : 'partial';
             $invoice->save();
 
             if ($data->postJournal) {

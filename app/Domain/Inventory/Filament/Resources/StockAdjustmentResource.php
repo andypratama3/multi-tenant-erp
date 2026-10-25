@@ -21,6 +21,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -117,6 +118,24 @@ class StockAdjustmentResource extends Resource
             ->filters([
                 SelectFilter::make('warehouse_id')->label('Gudang')->relationship('warehouse', 'name'),
                 SelectFilter::make('status')->options(['draft' => 'Draft', 'posted' => 'Posted']),
+                Filter::make('tanggal')
+                    ->label('Rentang Tanggal')
+                    ->schema([
+                        DatePicker::make('from')->label('Dari'),
+                        DatePicker::make('until')->label('Sampai'),
+                    ])
+                    ->columns(2)
+                    ->query(function (Builder $query, array $data): Builder {
+                        if (is_string($data['from'] ?? null)) {
+                            $query->whereDate('adjusted_at', '>=', $data['from']);
+                        }
+
+                        if (is_string($data['until'] ?? null)) {
+                            $query->whereDate('adjusted_at', '<=', $data['until']);
+                        }
+
+                        return $query;
+                    }),
             ])
             ->actions([
                 ViewAction::make(),

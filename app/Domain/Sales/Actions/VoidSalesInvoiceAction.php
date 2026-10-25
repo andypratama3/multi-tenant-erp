@@ -5,6 +5,7 @@ namespace App\Domain\Sales\Actions;
 use App\Domain\Accounting\Actions\PostJournalAction;
 use App\Domain\Accounting\Actions\PostJournalData;
 use App\Domain\Accounting\Models\Journal;
+use App\Domain\Sales\Models\Delivery;
 use App\Domain\Sales\Models\SalesInvoice;
 use App\Domain\Shared\Exceptions\InvalidDocumentStatusException;
 use App\Support\Money;
@@ -33,6 +34,14 @@ class VoidSalesInvoiceAction
 
             if (Money::isPositive($invoice->paid_amount)) {
                 throw new InvalidArgumentException('Invoice yang sudah memiliki pembayaran tidak dapat dibatalkan.');
+            }
+
+            if (Money::isPositive($invoice->returned_amount) || $invoice->returns()->exists()) {
+                throw new InvalidArgumentException('Invoice yang sudah memiliki retur tidak dapat dibatalkan.');
+            }
+
+            if ($invoice->sales_order_id !== null && Delivery::query()->where('sales_order_id', $invoice->sales_order_id)->exists()) {
+                throw new InvalidArgumentException('Invoice yang sudah memiliki pengiriman tidak dapat dibatalkan.');
             }
 
             /** @var Journal|null $original */

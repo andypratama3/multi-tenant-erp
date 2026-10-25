@@ -2,6 +2,8 @@
 
 use App\Domain\Inventory\Models\Product;
 use App\Domain\Inventory\Models\Unit;
+use App\Domain\Sales\Actions\ConfirmSalesOrderAction;
+use App\Domain\Sales\Actions\ConfirmSalesOrderData;
 use App\Domain\Sales\Actions\CreateSalesOrderAction;
 use App\Domain\Sales\Actions\CreateSalesOrderData;
 use App\Domain\Sales\Actions\IssueSalesInvoiceAction;
@@ -26,6 +28,7 @@ beforeEach(function () {
         'payment_terms_days' => 30, 'credit_limit' => '1000000.00', 'is_active' => true,
     ]);
     $this->createSO = new CreateSalesOrderAction;
+    $this->confirmSO = new ConfirmSalesOrderAction;
     $this->issueInvoice = new IssueSalesInvoiceAction;
     $this->recordPayment = new RecordPaymentAction;
 });
@@ -60,6 +63,11 @@ it('issuing invoice sets status to issued', function () {
         items: [['product_id' => $this->product->id, 'quantity_ordered' => '5.000', 'unit_price' => '10000.0000', 'discount_rate' => '0.00', 'tax_rate' => '0.00']],
     ));
 
+    $this->confirmSO->execute(new ConfirmSalesOrderData(
+        salesOrderId: $so->id,
+        confirmedBy: null,
+    ));
+
     $invoice = $this->issueInvoice->execute(new IssueSalesInvoiceData(
         salesOrderId: $so->id,
         customerId: $this->customer->id,
@@ -79,6 +87,11 @@ it('full payment changes invoice status to paid', function () {
         orderedAt: '2026-10-25',
         requiredAt: null, notes: null, createdBy: null,
         items: [['product_id' => $this->product->id, 'quantity_ordered' => '2.000', 'unit_price' => '10000.0000', 'discount_rate' => '0.00', 'tax_rate' => '0.00']],
+    ));
+
+    $this->confirmSO->execute(new ConfirmSalesOrderData(
+        salesOrderId: $so->id,
+        confirmedBy: null,
     ));
 
     $invoice = $this->issueInvoice->execute(new IssueSalesInvoiceData(
@@ -110,6 +123,11 @@ it('partial payment changes invoice status to partial', function () {
         items: [['product_id' => $this->product->id, 'quantity_ordered' => '10.000', 'unit_price' => '10000.0000', 'discount_rate' => '0.00', 'tax_rate' => '0.00']],
     ));
 
+    $this->confirmSO->execute(new ConfirmSalesOrderData(
+        salesOrderId: $so->id,
+        confirmedBy: null,
+    ));
+
     $invoice = $this->issueInvoice->execute(new IssueSalesInvoiceData(
         salesOrderId: $so->id,
         customerId: $this->customer->id,
@@ -137,6 +155,11 @@ it('throws InvoiceAlreadyPaidException when paying a fully paid invoice', functi
         orderedAt: '2026-10-25',
         requiredAt: null, notes: null, createdBy: null,
         items: [['product_id' => $this->product->id, 'quantity_ordered' => '1.000', 'unit_price' => '10000.0000', 'discount_rate' => '0.00', 'tax_rate' => '0.00']],
+    ));
+
+    $this->confirmSO->execute(new ConfirmSalesOrderData(
+        salesOrderId: $so->id,
+        confirmedBy: null,
     ));
 
     $invoice = $this->issueInvoice->execute(new IssueSalesInvoiceData(

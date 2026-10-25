@@ -55,3 +55,26 @@ it('renders key admin resource lists and the sales report', function (string $ur
     'pos' => [fn () => PosPage::getUrl()],
     'e-faktur export' => [fn () => EFakturExport::getUrl()],
 ]);
+
+it('renders key admin create forms', function (string $url) {
+    $this->get($url)->assertOk();
+})->with([
+    'product' => [fn () => ProductResource::getUrl('create')],
+    'purchase order' => [fn () => PurchaseOrderResource::getUrl('create')],
+    'goods receipt' => [fn () => GoodsReceiptNoteResource::getUrl('create')],
+    'purchase invoice' => [fn () => PurchaseInvoiceResource::getUrl('create')],
+    'sales order' => [fn () => SalesOrderResource::getUrl('create')],
+    'sales invoice' => [fn () => SalesInvoiceResource::getUrl('create')],
+    'delivery' => [fn () => DeliveryResource::getUrl('create')],
+    'sales return' => [fn () => SalesReturnResource::getUrl('create')],
+    'stock adjustment' => [fn () => StockAdjustmentResource::getUrl('create')],
+    'warehouse transfer' => [fn () => WarehouseTransferResource::getUrl('create')],
+]);
+
+it('forbids a role without permission from opening a resource list url directly', function () {
+    $sales = User::factory()->create()->assignRole('sales');
+
+    $this->actingAs($sales)
+        ->get(PurchaseOrderResource::getUrl('index'))
+        ->assertForbidden();
+});

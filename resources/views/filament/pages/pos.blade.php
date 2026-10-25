@@ -1,8 +1,18 @@
 <x-filament-panels::page>
     @if ($lastInvoiceNumber)
         <x-filament::section>
-            <p class="text-sm text-gray-500">Transaksi terakhir</p>
-            <p class="text-lg font-bold text-success-600">{{ $lastInvoiceNumber }} — pembayaran diterima</p>
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <p class="text-sm text-gray-500">Transaksi terakhir</p>
+                    <p class="text-lg font-bold text-success-600">{{ $lastInvoiceNumber }} — pembayaran diterima</p>
+                    @if ((float) $lastChange > 0)
+                        <p class="mt-1 text-sm">Kembalian: <span class="font-semibold">{{ \App\Support\Money::formatIdr($lastChange) }}</span></p>
+                    @endif
+                </div>
+                <button type="button" wire:click="dismissLastReceipt" class="text-sm text-gray-500 hover:text-gray-700">
+                    Tutup
+                </button>
+            </div>
         </x-filament::section>
     @endif
 
@@ -35,8 +45,12 @@
                 </div>
             </x-filament::section>
 
+            @error('cart')
+                <div class="mt-4 rounded-lg bg-danger-50 p-3 text-sm text-danger-700 dark:bg-danger-950 dark:text-danger-300">{{ $message }}</div>
+            @enderror
+
             <div class="mt-6">
-                <x-filament::section heading="Keranjang">
+                <x-filament::section heading="Keranjang" description="Harga, pajak, dan stok dihitung ulang oleh server saat pembayaran.">
                     <div class="overflow-x-auto">
                         <table class="w-full text-sm">
                             <thead>
@@ -55,12 +69,15 @@
                                         $line = \App\Support\Money::round(\App\Support\Money::mul($item['quantity'], $item['unit_price'], 4));
                                         $lineTax = \App\Support\Money::percentage($line, $item['tax_rate']);
                                     @endphp
-                                    <tr>
+                                    <tr wire:key="cart-{{ $item['product_id'] }}">
                                         <td class="px-2 py-3">
                                             <p class="font-medium">{{ $item['name'] }}</p>
                                             <p class="text-xs text-gray-500">{{ $item['sku'] }}</p>
                                         </td>
-                                        <td class="px-2 py-3 text-right">{{ $item['quantity'] }}</td>
+                                        <td class="px-2 py-3 text-right">
+                                            {{ $item['quantity'] }}
+                                            <span class="block text-xs text-gray-500">stok {{ $this->stockFor($item['product_id']) }}</span>
+                                        </td>
                                         <td class="px-2 py-3 text-right">{{ \App\Support\Money::formatIdr($item['unit_price']) }}</td>
                                         <td class="px-2 py-3 text-right">{{ $item['tax_rate'] }}%</td>
                                         <td class="px-2 py-3 text-right font-medium">{{ \App\Support\Money::formatIdr(\App\Support\Money::add($line, $lineTax)) }}</td>
@@ -104,6 +121,17 @@
                         @error('warehouseId') <p class="mt-1 text-sm text-danger-600">{{ $message }}</p> @enderror
                     </div>
 
+                    <div>
+                        <label class="mb-1 block text-sm font-medium">Metode Pembayaran</label>
+                        <select wire:model="paymentMethod" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-gray-900">
+                            <option value="cash">Tunai</option>
+                            <option value="transfer">Transfer Bank</option>
+                            <option value="qris">QRIS</option>
+                            <option value="other">Lainnya</option>
+                        </select>
+                        @error('paymentMethod') <p class="mt-1 text-sm text-danger-600">{{ $message }}</p> @enderror
+                    </div>
+
                     <div class="rounded-lg bg-gray-50 p-4 dark:bg-white/5">
                         <div class="flex justify-between text-sm"><span>Subtotal</span><span>{{ \App\Support\Money::formatIdr($this->subtotal()) }}</span></div>
                         <div class="mt-1 flex justify-between text-sm"><span>PPN</span><span>{{ \App\Support\Money::formatIdr($this->taxAmount()) }}</span></div>
@@ -115,6 +143,12 @@
                         <x-filament::input.wrapper>
                             <x-filament::input type="number" min="0" step="100" wire:model.live="amountPaid" />
                         </x-filament::input.wrapper>
+                        <div class="mt-2 flex flex-wrap gap-2">
+                            <button type="button" wire:click="setExactAmount" class="rounded-md border border-gray-300 px-2 py-1 text-xs hover:bg-gray-50 dark:border-white/10 dark:hover:bg-white/5">Uang pas</button>
+                            <button type="button" wire:click="addCash(50000)" class="rounded-md border border-gray-300 px-2 py-1 text-xs hover:bg-gray-50 dark:border-white/10 dark:hover:bg-white/5">+50.000</button>
+                            <button type="button" wire:click="addCash(100000)" class="rounded-md border border-gray-300 px-2 py-1 text-xs hover:bg-gray-50 dark:border-white/10 dark:hover:bg-white/5">+100.000</button>
+                            <button type="button" wire:click="addCash(500000)" class="rounded-md border border-gray-300 px-2 py-1 text-xs hover:bg-gray-50 dark:border-white/10 dark:hover:bg-white/5">+500.000</button>
+                        </div>
                         @error('amountPaid') <p class="mt-1 text-sm text-danger-600">{{ $message }}</p> @enderror
                     </div>
 
@@ -127,11 +161,20 @@
                         <x-filament::input wire:model="notes" placeholder="Catatan (opsional)" />
                     </x-filament::input.wrapper>
 
-                    <x-filament::button wire:click="process" icon="heroicon-o-check-circle" class="w-full" size="lg">
-                        Proses Pembayaran
+                    <x-filament::button
+                        wire:click="process"
+                        icon="heroicon-o-check-circle"
+                        class="w-full"
+                        size="lg"
+                        wire:loading.attr="disabled"
+                        wire:target="process"
+                        :disabled="$processing || $cart === []"
+                    >
+                        <span wire:loading.remove wire:target="process">Proses Pembayaran</span>
+                        <span wire:loading wire:target="process">Memproses...</span>
                     </x-filament::button>
 
-                    <x-filament::button wire:click="clearCart" color="gray" class="w-full" size="sm">
+                    <x-filament::button wire:click="clearCart" color="gray" class="w-full" size="sm" wire:loading.attr="disabled" wire:target="process">
                         Kosongkan Keranjang
                     </x-filament::button>
                 </div>

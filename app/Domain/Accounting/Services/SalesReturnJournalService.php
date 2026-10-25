@@ -33,13 +33,31 @@ class SalesReturnJournalService
                 'amount' => Money::round($return->subtotal),
                 'description' => "Retur penjualan {$return->return_number}",
             ],
-            [
+        ];
+
+        $creditToReceivable = Money::sub($return->total, $return->refund_amount);
+
+        if (Money::isPositive($creditToReceivable)) {
+            $lines[] = [
                 'account_id' => $receivable->id,
                 'type' => 'credit',
-                'amount' => Money::round($return->total),
+                'amount' => Money::round($creditToReceivable),
                 'description' => "Pengurangan piutang {$return->return_number}",
-            ],
-        ];
+            ];
+        }
+
+        if (Money::isPositive($return->refund_amount)) {
+            $refundAccount = $this->accountResolver->resolve(
+                $return->refund_method === 'cash' ? 'cash' : 'bank',
+            );
+
+            $lines[] = [
+                'account_id' => $refundAccount->id,
+                'type' => 'credit',
+                'amount' => Money::round($return->refund_amount),
+                'description' => "Pengembalian dana {$return->return_number}",
+            ];
+        }
 
         if (Money::isPositive($return->tax_amount)) {
             $lines[] = [
