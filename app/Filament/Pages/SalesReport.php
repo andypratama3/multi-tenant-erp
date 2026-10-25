@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Domain\Reporting\Exports\SalesSummaryExport;
 use App\Domain\Reporting\Services\SalesSummaryReport;
 use App\Domain\Sales\Models\SalesInvoice;
+use App\Support\Money;
 use Filament\Pages\Page;
 use Illuminate\Support\Carbon;
 use Maatwebsite\Excel\Facades\Excel;
@@ -24,8 +25,11 @@ class SalesReport extends Page
 
     protected static ?int $navigationSort = 10;
 
-    /** @var array<string, mixed> */
-    public array $reportData = [];
+    /** @var array{dailySummary: array<int, array<string, mixed>>, topProducts: array<int, array<string, mixed>>, arAging: array<int, array<string, mixed>>} */
+    public array $reportData = ['dailySummary' => [], 'topProducts' => [], 'arAging' => []];
+
+    /** @var array<string, string|int> */
+    public array $summary = [];
 
     public ?string $fromDate = null;
 
@@ -58,6 +62,44 @@ class SalesReport extends Page
                 ->map(fn (\stdClass $row): array => (array) $row)
                 ->all(),
         ];
+
+        $this->summary = $this->summarize();
+    }
+
+    /** @return array<string, string|int> */
+    private function summarize(): array
+    {
+        $invoiceCount = 0;
+        $subtotal = '0.00';
+        $tax = '0.00';
+        $total = '0.00';
+        $paid = '0.00';
+        $outstanding = '0.00';
+        $overdue = '0.00';
+
+        foreach ($this->reportData['dailySummary'] as $row) {
+            $invoiceCount += (int) $row['invoice_count'];
+            $subtotal = Money::add($subtotal, (string) $row['subtotal']);
+            $tax = Money::add($tax, (string) $row['tax_amount']);
+            $total = Money::add($total, (string) $row['total']);
+            $paid = Money::add($paid, (string) $row['paid_amount']);
+        }
+
+        foreach ($this->reportData['arAging'] as $row) {
+            $outstanding = Money::add($outstanding, (string) $row['outstanding']);
+            $overdue = Money::add($overdue, Money::add((string) $row['overdue_1_30'], (string) $row['overdue_31_60']));
+            $overdue = Money::add($overdue, (string) $row['overdue_60_plus']);
+        }
+
+        return [
+            'invoice_count' => $invoiceCount,
+            'subtotal' => $subtotal,
+            'tax' => $tax,
+            'total' => $total,
+            'paid' => $paid,
+            'outstanding' => $outstanding,
+            'overdue' => $overdue,
+        ];
     }
 
     public function updateReport(): void
@@ -88,6 +130,7 @@ class SalesReport extends Page
     {
         return [
             'reportData' => $this->reportData,
+            'summary' => $this->summary,
             'fromDate' => $this->fromDate,
             'toDate' => $this->toDate,
         ];

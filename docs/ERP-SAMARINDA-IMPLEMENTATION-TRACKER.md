@@ -7,7 +7,7 @@ Legenda: `[ ]` belum, `[~]` sebagian, `[x]` selesai + terverifikasi, `[-]` ditun
 
 ## Baseline Terkini
 
-- [x] `php artisan test` — 98 passed, 228 assertions
+- [x] `php artisan test` — 107 passed, 250 assertions
 - [x] `vendor/bin/phpstan analyse` — 0 error
 - [x] `vendor/bin/pint --test` — passed
 - [x] Migrasi `notifications`, `media`, `document_sequences` sudah dijalankan
@@ -126,3 +126,5 @@ Legenda: `[ ]` belum, `[~]` sebagian, `[x]` selesai + terverifikasi, `[-]` ditun
 | 2026-10-25 | UI transaksi, otorisasi, laporan, API, dashboard, PDF | 47 passed, 113 assertions | 0 error | passed |
 | 2026-10-25 | AP, retur, stock opname/transfer, laporan keuangan, period lock, POS, e-Faktur | 78 passed, 191 assertions | 0 error | passed |
 | 2026-10-25 | Audit UI/keamanan, filter, chart arus kas, aksi view, refund retur, guard void | 98 passed, 228 assertions | 0 error | passed |
+| 2026-10-25 | Hardening POS, smoke test resource, panel `/dashboard`, tema Filament, lokalisasi label | 106 passed, 236 assertions | 0 error | passed |
+| 2026-10-25 | Polish laporan (ringkasan & baris total), POS (select Filament, sticky pembayaran, empty state), pengaturan & e-Faktur | 107 passed, 250 assertions | 0 error | passed |
