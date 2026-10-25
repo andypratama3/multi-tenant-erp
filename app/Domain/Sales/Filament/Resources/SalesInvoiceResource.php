@@ -12,6 +12,7 @@ use App\Domain\Sales\Models\Customer;
 use App\Domain\Sales\Models\SalesInvoice;
 use App\Domain\Sales\Models\SalesOrder;
 use App\Domain\Sales\Pdfs\SalesInvoicePdf;
+use App\Filament\Support\DocumentTimeline;
 use App\Support\Money;
 use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
@@ -28,6 +29,8 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -196,6 +199,7 @@ class SalesInvoiceResource extends Resource
                         ])
                         ->columns(5),
                 ]),
+            DocumentTimeline::make(),
         ]);
     }
 
@@ -226,6 +230,40 @@ class SalesInvoiceResource extends Resource
                     default => 'gray',
                 }),
         ])
+            ->filters([
+                SelectFilter::make('status')
+                    ->label('Status')
+                    ->options([
+                        'draft' => 'Draft',
+                        'issued' => 'Terbit',
+                        'partial' => 'Sebagian',
+                        'paid' => 'Lunas',
+                        'cancelled' => 'Dibatalkan',
+                    ]),
+                SelectFilter::make('customer_id')
+                    ->label('Pelanggan')
+                    ->relationship('customer', 'name')
+                    ->searchable()
+                    ->preload(),
+                Filter::make('tanggal')
+                    ->label('Rentang Tanggal')
+                    ->schema([
+                        DatePicker::make('from')->label('Dari'),
+                        DatePicker::make('until')->label('Sampai'),
+                    ])
+                    ->columns(2)
+                    ->query(function (Builder $query, array $data): Builder {
+                        if (is_string($data['from'] ?? null)) {
+                            $query->whereDate('issued_at', '>=', $data['from']);
+                        }
+
+                        if (is_string($data['until'] ?? null)) {
+                            $query->whereDate('issued_at', '<=', $data['until']);
+                        }
+
+                        return $query;
+                    }),
+            ])
             ->actions([
                 ViewAction::make(),
                 Action::make('downloadPdf')

@@ -25,6 +25,8 @@ class SalesInvoiceController extends Controller
 {
     public function index(): ResourceCollection
     {
+        $this->authorize('viewAny', SalesInvoice::class);
+
         return JsonResource::collection(
             SalesInvoice::with(['customer', 'items.product'])->orderByDesc('created_at')->paginate(20)
         );
@@ -32,6 +34,8 @@ class SalesInvoiceController extends Controller
 
     public function store(IssueInvoiceRequest $request, IssueSalesInvoiceAction $action): JsonResponse
     {
+        $this->authorize('create', SalesInvoice::class);
+
         $invoice = $action->execute(new IssueSalesInvoiceData(
             salesOrderId: $request->validated('sales_order_id'),
             customerId: $request->validated('customer_id'),
@@ -49,6 +53,8 @@ class SalesInvoiceController extends Controller
 
     public function show(SalesInvoice $salesInvoice): JsonResource
     {
+        $this->authorize('view', $salesInvoice);
+
         return JsonResource::make($salesInvoice->load(['customer', 'items.product', 'payments']));
     }
 
@@ -57,6 +63,8 @@ class SalesInvoiceController extends Controller
      */
     public function recordPayment(RecordPaymentRequest $request, SalesInvoice $salesInvoice, RecordPaymentAction $action): JsonResponse
     {
+        $this->authorize('recordPayment', $salesInvoice);
+
         $payment = $action->execute(new RecordPaymentData(
             invoiceId: $salesInvoice->id,
             amount: $request->validated('amount'),
@@ -64,6 +72,7 @@ class SalesInvoiceController extends Controller
             paymentMethod: $request->validated('payment_method'),
             reference: $request->validated('reference'),
             createdBy: $request->user()?->id,
+            notes: $request->validated('notes'),
         ));
 
         return response()->json([
@@ -78,6 +87,8 @@ class SalesInvoiceController extends Controller
      */
     public function downloadPdf(SalesInvoice $salesInvoice): StreamedResponse
     {
+        $this->authorize('downloadPdf', $salesInvoice);
+
         return (new SalesInvoicePdf($salesInvoice))->download();
     }
 }

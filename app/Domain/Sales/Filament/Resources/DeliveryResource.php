@@ -9,6 +9,7 @@ use App\Domain\Sales\Filament\Resources\DeliveryResource\Pages;
 use App\Domain\Sales\Models\Delivery;
 use App\Domain\Sales\Models\SalesOrder;
 use App\Domain\Sales\Models\SalesOrderItem;
+use App\Filament\Support\DocumentTimeline;
 use App\Support\Money;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
@@ -27,6 +28,8 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -167,6 +170,7 @@ class DeliveryResource extends Resource
                         ])
                         ->columns(3),
                 ]),
+            DocumentTimeline::make(),
         ]);
     }
 
@@ -193,6 +197,39 @@ class DeliveryResource extends Resource
                     default => 'gray',
                 }),
         ])
+            ->filters([
+                SelectFilter::make('status')
+                    ->label('Status')
+                    ->options([
+                        'draft' => 'Draft',
+                        'shipped' => 'Dikirim',
+                        'delivered' => 'Diterima',
+                        'returned' => 'Dikembalikan',
+                    ]),
+                SelectFilter::make('warehouse_id')
+                    ->label('Gudang')
+                    ->relationship('warehouse', 'name')
+                    ->searchable()
+                    ->preload(),
+                Filter::make('tanggal')
+                    ->label('Rentang Tanggal')
+                    ->schema([
+                        DatePicker::make('from')->label('Dari'),
+                        DatePicker::make('until')->label('Sampai'),
+                    ])
+                    ->columns(2)
+                    ->query(function (Builder $query, array $data): Builder {
+                        if (is_string($data['from'] ?? null)) {
+                            $query->whereDate('shipped_at', '>=', $data['from']);
+                        }
+
+                        if (is_string($data['until'] ?? null)) {
+                            $query->whereDate('shipped_at', '<=', $data['until']);
+                        }
+
+                        return $query;
+                    }),
+            ])
             ->actions([
                 ViewAction::make(),
                 Action::make('post')
@@ -217,6 +254,8 @@ class DeliveryResource extends Resource
                     }),
                 DeleteAction::make()->visible(fn (Delivery $record): bool => $record->status === 'draft'),
             ])
+            ->emptyStateHeading('Belum ada pengiriman')
+            ->emptyStateDescription('Buat pengiriman dari pesanan penjualan yang sudah dikonfirmasi.')
             ->defaultSort('created_at', 'desc');
     }
 
@@ -224,6 +263,11 @@ class DeliveryResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->with(['salesOrder', 'warehouse']);
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return $record instanceof Delivery && $record->status === 'draft' && parent::canDelete($record);
     }
 
     public static function getPages(): array

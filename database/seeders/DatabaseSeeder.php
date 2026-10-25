@@ -14,6 +14,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             RolesAndPermissionsSeeder::class,
             ChartOfAccountsSeeder::class,
+            OperationalDataSeeder::class,
         ]);
 
         // Idempotent super_admin user

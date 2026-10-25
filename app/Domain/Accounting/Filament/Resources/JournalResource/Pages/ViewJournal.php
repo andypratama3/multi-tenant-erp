@@ -12,6 +12,6 @@ class ViewJournal extends ViewRecord
 
     protected function resolveRecord(int|string $key): Model
     {
-        return parent::resolveRecord($key)->load(['lines.account']);
+        return parent::resolveRecord($key)->load(['lines.account', 'activities.causer']);
     }
 }

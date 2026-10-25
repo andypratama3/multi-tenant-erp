@@ -12,6 +12,6 @@ class ViewDelivery extends ViewRecord
 
     protected function resolveRecord(int|string $key): Model
     {
-        return parent::resolveRecord($key)->load(['salesOrder.customer', 'warehouse', 'items.product']);
+        return parent::resolveRecord($key)->load(['salesOrder.customer', 'warehouse', 'items.product', 'activities.causer']);
     }
 }

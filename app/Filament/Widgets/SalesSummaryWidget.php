@@ -25,21 +25,25 @@ class SalesSummaryWidget extends BaseWidget
         $today = today()->toDateString();
 
         $todaySales = (string) (DB::table('sales_invoices')
+            ->whereNull('deleted_at')
             ->whereIn('status', ['issued', 'partial', 'paid'])
             ->whereDate('issued_at', $today)
             ->sum('total'));
 
         $monthSales = (string) (DB::table('sales_invoices')
+            ->whereNull('deleted_at')
             ->whereIn('status', ['issued', 'partial', 'paid'])
             ->whereMonth('issued_at', date('n'))
             ->whereYear('issued_at', date('Y'))
             ->sum('total'));
 
         $outstandingAR = (string) (DB::table('sales_invoices')
+            ->whereNull('deleted_at')
             ->whereIn('status', ['issued', 'partial'])
             ->sum(DB::raw('total - paid_amount')));
 
         $overdueCount = (int) DB::table('sales_invoices')
+            ->whereNull('deleted_at')
             ->whereIn('status', ['issued', 'partial'])
             ->where('due_at', '<', $today)
             ->whereRaw('total > paid_amount')

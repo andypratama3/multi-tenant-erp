@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\SalesInvoiceController;
@@ -12,28 +13,27 @@ use Illuminate\Support\Facades\Route;
 | API Routes — ERP Samarinda
 |--------------------------------------------------------------------------
 |
-| All routes are prefixed with /api and use Sanctum token authentication.
-| Scramble auto-generates OpenAPI docs at /docs/api.
+| Token-authenticated JSON API. Obtain a token from POST /api/login and send
+| it as `Authorization: Bearer <token>`.
 |
 */
 
-Route::middleware('auth:sanctum')->group(function (): void {
-    // Products
-    Route::apiResource('products', ProductController::class);
+Route::post('login', [AuthController::class, 'login'])->middleware('throttle:5,1');
 
-    // Customers
+Route::middleware(['auth:sanctum', 'throttle:60,1'])->group(function (): void {
+    Route::get('me', [AuthController::class, 'me']);
+    Route::post('logout', [AuthController::class, 'logout']);
+
+    Route::apiResource('products', ProductController::class);
     Route::apiResource('customers', CustomerController::class);
 
-    // Sales Orders
-    Route::apiResource('sales-orders', SalesOrderController::class);
-    Route::post('sales-orders/{id}/confirm', [SalesOrderController::class, 'confirm']);
+    Route::apiResource('sales-orders', SalesOrderController::class)->only(['index', 'store', 'show']);
+    Route::post('sales-orders/{salesOrder}/confirm', [SalesOrderController::class, 'confirm']);
 
-    // Sales Invoices
-    Route::apiResource('sales-invoices', SalesInvoiceController::class);
-    Route::post('sales-invoices/{id}/payment', [SalesInvoiceController::class, 'recordPayment']);
-    Route::get('sales-invoices/{id}/pdf', [SalesInvoiceController::class, 'downloadPdf']);
+    Route::apiResource('sales-invoices', SalesInvoiceController::class)->only(['index', 'store', 'show']);
+    Route::post('sales-invoices/{salesInvoice}/payment', [SalesInvoiceController::class, 'recordPayment']);
+    Route::get('sales-invoices/{salesInvoice}/pdf', [SalesInvoiceController::class, 'downloadPdf']);
 
-    // Stock balances
     Route::get('stock-balances', [StockBalanceController::class, 'index']);
     Route::get('stock-balances/{productId}', [StockBalanceController::class, 'byProduct']);
 });

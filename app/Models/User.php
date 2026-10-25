@@ -88,6 +88,14 @@ class User extends Authenticatable implements FilamentUser
      */
     public function canAccessPanel(Panel $panel): bool
     {
+        return $this->hasOperationalRole();
+    }
+
+    /**
+     * Determine if the user has a role that grants operational access.
+     */
+    public function hasOperationalRole(): bool
+    {
         return $this->hasAnyRole([
             'super_admin',
             'manajer',

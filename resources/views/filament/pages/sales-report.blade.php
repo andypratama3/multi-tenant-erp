@@ -32,6 +32,10 @@
                 <x-filament::button wire:click="updateReport" icon="heroicon-o-arrow-path">
                     Perbarui Laporan
                 </x-filament::button>
+
+                <x-filament::button wire:click="export" color="gray" icon="heroicon-o-arrow-down-tray">
+                    Ekspor Excel
+                </x-filament::button>
             </div>
         </x-filament::section>
 

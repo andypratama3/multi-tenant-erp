@@ -9,6 +9,7 @@ use App\Domain\Purchasing\Filament\Resources\GoodsReceiptNoteResource\Pages;
 use App\Domain\Purchasing\Models\GoodsReceiptNote;
 use App\Domain\Purchasing\Models\PurchaseOrder;
 use App\Domain\Purchasing\Models\PurchaseOrderItem;
+use App\Filament\Support\DocumentTimeline;
 use App\Support\Money;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
@@ -27,6 +28,8 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -177,6 +180,7 @@ class GoodsReceiptNoteResource extends Resource
                         ])
                         ->columns(3),
                 ]),
+            DocumentTimeline::make(),
         ]);
     }
 
@@ -191,6 +195,37 @@ class GoodsReceiptNoteResource extends Resource
                 ->formatStateUsing(fn (string $state): string => $state === 'posted' ? 'Diposting' : 'Draft')
                 ->color(fn (string $state): string => $state === 'posted' ? 'success' : 'gray'),
         ])
+            ->filters([
+                SelectFilter::make('status')
+                    ->label('Status')
+                    ->options([
+                        'draft' => 'Draft',
+                        'posted' => 'Diposting',
+                    ]),
+                SelectFilter::make('warehouse_id')
+                    ->label('Gudang')
+                    ->relationship('warehouse', 'name')
+                    ->searchable()
+                    ->preload(),
+                Filter::make('tanggal')
+                    ->label('Rentang Tanggal')
+                    ->schema([
+                        DatePicker::make('from')->label('Dari'),
+                        DatePicker::make('until')->label('Sampai'),
+                    ])
+                    ->columns(2)
+                    ->query(function (Builder $query, array $data): Builder {
+                        if (is_string($data['from'] ?? null)) {
+                            $query->whereDate('received_at', '>=', $data['from']);
+                        }
+
+                        if (is_string($data['until'] ?? null)) {
+                            $query->whereDate('received_at', '<=', $data['until']);
+                        }
+
+                        return $query;
+                    }),
+            ])
             ->actions([
                 ViewAction::make(),
                 Action::make('post')
@@ -215,6 +250,8 @@ class GoodsReceiptNoteResource extends Resource
                     }),
                 DeleteAction::make()->visible(fn (GoodsReceiptNote $record): bool => $record->status === 'draft'),
             ])
+            ->emptyStateHeading('Belum ada penerimaan barang')
+            ->emptyStateDescription('Buat penerimaan dari pesanan pembelian yang sudah dikirim.')
             ->defaultSort('created_at', 'desc');
     }
 
@@ -222,6 +259,11 @@ class GoodsReceiptNoteResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->with(['purchaseOrder', 'warehouse']);
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return $record instanceof GoodsReceiptNote && $record->status === 'draft' && parent::canDelete($record);
     }
 
     public static function getPages(): array

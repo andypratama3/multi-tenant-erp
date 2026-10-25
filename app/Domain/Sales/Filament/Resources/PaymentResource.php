@@ -5,6 +5,7 @@ namespace App\Domain\Sales\Filament\Resources;
 use App\Domain\Sales\Filament\Resources\PaymentResource\Pages;
 use App\Domain\Sales\Models\Payment;
 use App\Domain\Sales\Models\SalesInvoice;
+use App\Filament\Support\DocumentTimeline;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
@@ -15,6 +16,8 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -95,6 +98,7 @@ class PaymentResource extends Resource
                     TextEntry::make('notes')->label('Catatan')->placeholder('—')->columnSpanFull(),
                 ])
                 ->columns(3),
+            DocumentTimeline::make(),
         ]);
     }
 
@@ -114,9 +118,39 @@ class PaymentResource extends Resource
                 }),
             TextColumn::make('amount')->label('Nominal')->money('IDR'),
         ])
+            ->filters([
+                SelectFilter::make('payment_method')
+                    ->label('Metode')
+                    ->options([
+                        'cash' => 'Tunai',
+                        'transfer' => 'Transfer Bank',
+                        'qris' => 'QRIS',
+                        'other' => 'Lainnya',
+                    ]),
+                Filter::make('tanggal')
+                    ->label('Rentang Tanggal')
+                    ->schema([
+                        DatePicker::make('from')->label('Dari'),
+                        DatePicker::make('until')->label('Sampai'),
+                    ])
+                    ->columns(2)
+                    ->query(function (Builder $query, array $data): Builder {
+                        if (is_string($data['from'] ?? null)) {
+                            $query->whereDate('paid_at', '>=', $data['from']);
+                        }
+
+                        if (is_string($data['until'] ?? null)) {
+                            $query->whereDate('paid_at', '<=', $data['until']);
+                        }
+
+                        return $query;
+                    }),
+            ])
             ->actions([
                 ViewAction::make(),
             ])
+            ->emptyStateHeading('Belum ada pembayaran')
+            ->emptyStateDescription('Pembayaran faktur akan muncul di sini.')
             ->defaultSort('created_at', 'desc');
     }
 

@@ -10,7 +10,7 @@ class ViewGoodsReceiptNote extends ViewRecord
 {
     protected function resolveRecord(int|string $key): Model
     {
-        return parent::resolveRecord($key)->load(['purchaseOrder.supplier', 'warehouse', 'items.product']);
+        return parent::resolveRecord($key)->load(['purchaseOrder.supplier', 'warehouse', 'items.product', 'activities.causer']);
     }
 
     protected static string $resource = GoodsReceiptNoteResource::class;

@@ -3,6 +3,9 @@
 namespace App\Providers\Filament;
 
 use App\Domain\Inventory\Filament\Widgets\LowStockWidget;
+use App\Filament\Widgets\OverdueInvoiceWidget;
+use App\Filament\Widgets\PurchasingSummaryWidget;
+use App\Filament\Widgets\SalesChartWidget;
 use App\Filament\Widgets\SalesSummaryWidget;
 use App\Filament\Widgets\StockValuationWidget;
 use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
@@ -14,8 +17,6 @@ use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
-use Filament\Widgets\AccountWidget;
-use Filament\Widgets\FilamentInfoWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
@@ -51,11 +52,12 @@ class AdminPanelProvider extends PanelProvider
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->discoverWidgets(in: app_path('Domain/Inventory/Filament/Widgets'), for: 'App\Domain\Inventory\Filament\Widgets')
             ->widgets([
-                AccountWidget::class,
                 SalesSummaryWidget::class,
+                SalesChartWidget::class,
+                PurchasingSummaryWidget::class,
+                OverdueInvoiceWidget::class,
                 StockValuationWidget::class,
                 LowStockWidget::class,
-                FilamentInfoWidget::class,
             ])
             ->navigationGroups([
                 'Inventaris',

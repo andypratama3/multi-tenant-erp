@@ -12,6 +12,6 @@ class ViewSalesInvoice extends ViewRecord
 
     protected function resolveRecord(int|string $key): Model
     {
-        return parent::resolveRecord($key)->load(['customer', 'salesOrder', 'items.product', 'payments']);
+        return parent::resolveRecord($key)->load(['customer', 'salesOrder', 'items.product', 'payments', 'activities.causer']);
     }
 }

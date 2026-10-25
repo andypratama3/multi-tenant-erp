@@ -5,6 +5,7 @@ namespace App\Domain\Accounting\Filament\Resources;
 use App\Domain\Accounting\Filament\Resources\JournalResource\Pages;
 use App\Domain\Accounting\Models\Account;
 use App\Domain\Accounting\Models\Journal;
+use App\Filament\Support\DocumentTimeline;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Repeater;
@@ -17,7 +18,10 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class JournalResource extends Resource
 {
@@ -110,6 +114,7 @@ class JournalResource extends Resource
                         ])
                         ->columns(5),
                 ]),
+            DocumentTimeline::make(),
         ]);
     }
 
@@ -126,9 +131,37 @@ class JournalResource extends Resource
                 ->counts('lines')
                 ->label('Baris'),
         ])
+            ->filters([
+                SelectFilter::make('status')
+                    ->label('Status')
+                    ->options([
+                        'draft' => 'Draft',
+                        'posted' => 'Diposting',
+                    ]),
+                Filter::make('tanggal')
+                    ->label('Rentang Tanggal')
+                    ->schema([
+                        DatePicker::make('from')->label('Dari'),
+                        DatePicker::make('until')->label('Sampai'),
+                    ])
+                    ->columns(2)
+                    ->query(function (Builder $query, array $data): Builder {
+                        if (is_string($data['from'] ?? null)) {
+                            $query->whereDate('posted_at', '>=', $data['from']);
+                        }
+
+                        if (is_string($data['until'] ?? null)) {
+                            $query->whereDate('posted_at', '<=', $data['until']);
+                        }
+
+                        return $query;
+                    }),
+            ])
             ->actions([
                 ViewAction::make(),
             ])
+            ->emptyStateHeading('Belum ada jurnal')
+            ->emptyStateDescription('Jurnal manual dan jurnal otomatis akan tampil di sini.')
             ->defaultSort('created_at', 'desc');
     }
 

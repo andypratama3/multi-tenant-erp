@@ -2,6 +2,7 @@
 
 namespace App\Domain\Reporting\Services;
 
+use App\Support\Money;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -60,29 +61,63 @@ class SalesSummaryReport
     /**
      * Returns accounts receivable aging summary.
      *
+     * Aging buckets are calculated in PHP so the report works on MySQL,
+     * PostgreSQL, and SQLite without database-specific date functions.
+     *
      * @return Collection<int, \stdClass>
      */
     public function arAging(string $asOf): Collection
     {
-        // Validate date format via Carbon to ensure it's safe to interpolate
-        $safeAsOf = Carbon::parse($asOf)->format('Y-m-d');
+        $asOfDate = Carbon::parse($asOf)->startOfDay();
 
-        return DB::table('sales_invoices as si')
+        $rows = DB::table('sales_invoices as si')
             ->join('customers as c', 'c.id', '=', 'si.customer_id')
-            ->select(
-                'c.code',
-                'c.name',
-                DB::raw('SUM(si.total - si.paid_amount) as outstanding'),
-                DB::raw('SUM(CASE WHEN DATEDIFF(?, si.due_at) <= 0 THEN si.total - si.paid_amount ELSE 0 END) as current_due'),
-                DB::raw('SUM(CASE WHEN DATEDIFF(?, si.due_at) BETWEEN 1 AND 30 THEN si.total - si.paid_amount ELSE 0 END) as overdue_1_30'),
-                DB::raw('SUM(CASE WHEN DATEDIFF(?, si.due_at) BETWEEN 31 AND 60 THEN si.total - si.paid_amount ELSE 0 END) as overdue_31_60'),
-                DB::raw('SUM(CASE WHEN DATEDIFF(?, si.due_at) > 60 THEN si.total - si.paid_amount ELSE 0 END) as overdue_60_plus'),
-            )
+            ->select('c.code', 'c.name', 'si.due_at')
+            ->selectRaw('si.total - si.paid_amount as outstanding')
             ->whereNull('si.deleted_at')
             ->whereIn('si.status', ['issued', 'partial'])
-            ->groupBy('c.id', 'c.code', 'c.name')
-            ->orderByDesc('outstanding')
-            ->addBinding([$safeAsOf, $safeAsOf, $safeAsOf, $safeAsOf], 'select')
             ->get();
+
+        /** @var array<string, \stdClass> $grouped */
+        $grouped = [];
+
+        foreach ($rows as $row) {
+            $key = (string) $row->code.'|'.(string) $row->name;
+
+            if (! isset($grouped[$key])) {
+                $grouped[$key] = (object) [
+                    'code' => (string) $row->code,
+                    'name' => (string) $row->name,
+                    'outstanding' => '0.00',
+                    'current_due' => '0.00',
+                    'overdue_1_30' => '0.00',
+                    'overdue_31_60' => '0.00',
+                    'overdue_60_plus' => '0.00',
+                ];
+            }
+
+            $amount = Money::decimal((string) $row->outstanding);
+            $grouped[$key]->outstanding = Money::add($grouped[$key]->outstanding, $amount);
+
+            $overdueDays = (int) Carbon::parse((string) $row->due_at)->startOfDay()->diffInDays($asOfDate, false);
+
+            $bucket = match (true) {
+                $overdueDays <= 0 => 'current_due',
+                $overdueDays <= 30 => 'overdue_1_30',
+                $overdueDays <= 60 => 'overdue_31_60',
+                default => 'overdue_60_plus',
+            };
+
+            $grouped[$key]->{$bucket} = Money::add($grouped[$key]->{$bucket}, $amount);
+        }
+
+        $result = array_values($grouped);
+
+        usort($result, fn (\stdClass $a, \stdClass $b): int => Money::compare(
+            (string) $b->outstanding,
+            (string) $a->outstanding,
+        ));
+
+        return collect($result);
     }
 }

@@ -10,7 +10,7 @@ class ViewPurchaseOrder extends ViewRecord
 {
     protected function resolveRecord(int|string $key): Model
     {
-        return parent::resolveRecord($key)->load(['supplier', 'items.product']);
+        return parent::resolveRecord($key)->load(['supplier', 'items.product', 'activities.causer']);
     }
 
     protected static string $resource = PurchaseOrderResource::class;

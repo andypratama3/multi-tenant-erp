@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Domain\Inventory\Models\Product;
 use App\Domain\Inventory\Models\StockBalance;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -19,6 +20,8 @@ class StockBalanceController extends Controller
      */
     public function index(): ResourceCollection
     {
+        $this->authorize('viewAny', Product::class);
+
         return JsonResource::collection(
             StockBalance::with(['product.unit', 'warehouse'])
                 ->orderBy('product_id')
@@ -31,6 +34,8 @@ class StockBalanceController extends Controller
      */
     public function byProduct(string $productId): JsonResource
     {
+        $this->authorize('viewAny', Product::class);
+
         return JsonResource::collection(
             StockBalance::with(['warehouse'])
                 ->where('product_id', $productId)

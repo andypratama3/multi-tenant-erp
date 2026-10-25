@@ -2,10 +2,13 @@
 
 namespace App\Filament\Pages;
 
+use App\Domain\Reporting\Exports\SalesSummaryExport;
 use App\Domain\Reporting\Services\SalesSummaryReport;
 use App\Domain\Sales\Models\SalesInvoice;
 use Filament\Pages\Page;
 use Illuminate\Support\Carbon;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class SalesReport extends Page
 {
@@ -63,6 +66,19 @@ class SalesReport extends Page
         ]);
 
         $this->loadReport();
+    }
+
+    public function export(): BinaryFileResponse
+    {
+        $this->validate([
+            'fromDate' => ['required', 'date'],
+            'toDate' => ['required', 'date', 'after_or_equal:fromDate'],
+        ]);
+
+        return Excel::download(
+            new SalesSummaryExport((string) $this->fromDate, (string) $this->toDate),
+            'laporan-penjualan-'.$this->fromDate.'-'.$this->toDate.'.xlsx',
+        );
     }
 
     /** @return array<string, mixed> */

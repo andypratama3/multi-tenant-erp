@@ -4,7 +4,6 @@ namespace App\Domain\Tax\Filament\Resources;
 
 use App\Domain\Tax\Filament\Resources\TaxRateResource\Pages;
 use App\Domain\Tax\Models\TaxRate;
-use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
@@ -30,8 +29,8 @@ class TaxRateResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            TextInput::make('code')->required()->maxLength(30)->unique(ignoreRecord: true),
-            TextInput::make('name')->required()->maxLength(150),
+            TextInput::make('code')->label('Kode')->required()->maxLength(20)->unique(ignoreRecord: true),
+            TextInput::make('name')->label('Nama')->required()->maxLength(100),
             Select::make('type')
                 ->options([
                     'ppn' => 'PPN',
@@ -42,18 +41,18 @@ class TaxRateResource extends Resource
                     'other' => 'Other',
                 ])
                 ->required(),
-            TextInput::make('rate')->numeric()->required()->suffix('%'),
-            Toggle::make('is_active')->default(true),
-            Textarea::make('description')->rows(3),
+            TextInput::make('rate')->label('Tarif')->numeric()->required()->minValue(0)->maxValue(100)->suffix('%'),
+            Toggle::make('is_active')->label('Aktif')->default(true),
+            Textarea::make('description')->label('Deskripsi')->rows(3),
         ]);
     }
 
     public static function table(Table $table): Table
     {
         return $table->columns([
-            TextColumn::make('code')->searchable()->sortable(),
-            TextColumn::make('name')->searchable()->sortable(),
-            TextColumn::make('type')->badge()
+            TextColumn::make('code')->label('Kode')->searchable()->sortable(),
+            TextColumn::make('name')->label('Nama')->searchable()->sortable(),
+            TextColumn::make('type')->label('Jenis')->badge()
                 ->color(fn (string $state): string => match ($state) {
                     'ppn' => 'info',
                     'pph_21' => 'warning',
@@ -63,11 +62,10 @@ class TaxRateResource extends Resource
                     'other' => 'gray',
                     default => 'gray',
                 }),
-            TextColumn::make('rate')->suffix('%'),
-            IconColumn::make('is_active')->boolean(),
+            TextColumn::make('rate')->label('Tarif')->suffix('%'),
+            IconColumn::make('is_active')->label('Aktif')->boolean(),
         ])
             ->actions([EditAction::make(), DeleteAction::make()])
-            ->headerActions([CreateAction::make()])
             ->defaultSort('code');
     }
 

@@ -12,6 +12,6 @@ class ViewPayment extends ViewRecord
 
     protected function resolveRecord(int|string $key): Model
     {
-        return parent::resolveRecord($key)->load(['invoice.customer']);
+        return parent::resolveRecord($key)->load(['invoice.customer', 'activities.causer']);
     }
 }

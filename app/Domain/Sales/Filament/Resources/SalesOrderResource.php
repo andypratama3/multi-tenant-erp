@@ -9,6 +9,7 @@ use App\Domain\Sales\Filament\Resources\SalesOrderResource\Pages;
 use App\Domain\Sales\Models\Customer;
 use App\Domain\Sales\Models\SalesInvoice;
 use App\Domain\Sales\Models\SalesOrder;
+use App\Filament\Support\DocumentTimeline;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
@@ -26,6 +27,8 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -167,6 +170,7 @@ class SalesOrderResource extends Resource
                     TextEntry::make('total')->label('Total')->money('IDR')->weight('bold'),
                 ])
                 ->columns(4),
+            DocumentTimeline::make(),
         ]);
     }
 
@@ -195,6 +199,40 @@ class SalesOrderResource extends Resource
                 }),
             TextColumn::make('total')->label('Total')->money('IDR'),
         ])
+            ->filters([
+                SelectFilter::make('status')
+                    ->label('Status')
+                    ->options([
+                        'draft' => 'Draft',
+                        'confirmed' => 'Dikonfirmasi',
+                        'partial' => 'Sebagian',
+                        'fulfilled' => 'Terpenuhi',
+                        'cancelled' => 'Dibatalkan',
+                    ]),
+                SelectFilter::make('customer_id')
+                    ->label('Pelanggan')
+                    ->relationship('customer', 'name')
+                    ->searchable()
+                    ->preload(),
+                Filter::make('tanggal')
+                    ->label('Rentang Tanggal')
+                    ->schema([
+                        DatePicker::make('from')->label('Dari'),
+                        DatePicker::make('until')->label('Sampai'),
+                    ])
+                    ->columns(2)
+                    ->query(function (Builder $query, array $data): Builder {
+                        if (is_string($data['from'] ?? null)) {
+                            $query->whereDate('ordered_at', '>=', $data['from']);
+                        }
+
+                        if (is_string($data['until'] ?? null)) {
+                            $query->whereDate('ordered_at', '<=', $data['until']);
+                        }
+
+                        return $query;
+                    }),
+            ])
             ->actions([
                 ViewAction::make(),
                 EditAction::make()->authorize('update')->visible(fn (SalesOrder $record): bool => $record->status === 'draft'),
@@ -226,6 +264,8 @@ class SalesOrderResource extends Resource
                     ->url(fn (SalesOrder $record): string => SalesInvoiceResource::getUrl('create', ['sales_order_id' => $record->id])),
                 DeleteAction::make()->visible(fn (SalesOrder $record): bool => $record->status === 'draft'),
             ])
+            ->emptyStateHeading('Belum ada pesanan penjualan')
+            ->emptyStateDescription('Buat pesanan penjualan pertama untuk mulai memproses transaksi.')
             ->defaultSort('created_at', 'desc');
     }
 
@@ -233,6 +273,16 @@ class SalesOrderResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->with(['customer']);
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        return $record instanceof SalesOrder && $record->status === 'draft' && parent::canEdit($record);
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return $record instanceof SalesOrder && $record->status === 'draft' && parent::canDelete($record);
     }
 
     public static function getPages(): array

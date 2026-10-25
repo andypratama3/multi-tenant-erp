@@ -2,6 +2,7 @@
 
 namespace App\Domain\Purchasing\Models;
 
+use App\Domain\Inventory\Models\Warehouse;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -57,6 +58,12 @@ class GoodsReceiptNote extends Model
     public function purchaseOrder(): BelongsTo
     {
         return $this->belongsTo(PurchaseOrder::class);
+    }
+
+    /** @return BelongsTo<Warehouse, $this> */
+    public function warehouse(): BelongsTo
+    {
+        return $this->belongsTo(Warehouse::class);
     }
 
     /** @return HasMany<GoodsReceiptNoteItem, $this> */

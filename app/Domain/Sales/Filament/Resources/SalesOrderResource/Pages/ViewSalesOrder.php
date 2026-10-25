@@ -10,7 +10,7 @@ class ViewSalesOrder extends ViewRecord
 {
     protected function resolveRecord(int|string $key): Model
     {
-        return parent::resolveRecord($key)->load(['customer', 'items.product']);
+        return parent::resolveRecord($key)->load(['customer', 'items.product', 'activities.causer']);
     }
 
     protected static string $resource = SalesOrderResource::class;
