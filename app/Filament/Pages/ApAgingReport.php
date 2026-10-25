@@ -15,6 +15,8 @@ class ApAgingReport extends Page
 
     protected static \UnitEnum|string|null $navigationGroup = 'Laporan';
 
+    protected static ?string $title = 'Laporan Utang (AP)';
+
     protected static ?string $navigationLabel = 'Laporan Utang (AP)';
 
     protected static ?int $navigationSort = 11;

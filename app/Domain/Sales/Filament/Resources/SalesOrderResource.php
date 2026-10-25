@@ -256,7 +256,7 @@ class SalesOrderResource extends Resource
                         }
                     }),
                 Action::make('invoice')
-                    ->label('Buat Invoice')
+                    ->label('Buat Faktur')
                     ->icon('heroicon-o-document-plus')
                     ->color('info')
                     ->authorize('create', SalesInvoice::class)

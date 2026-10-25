@@ -52,7 +52,7 @@ class PurchaseOrderResource extends Resource
     {
         return $schema->components([
             Select::make('supplier_id')
-                ->label('Supplier')
+                ->label('Pemasok')
                 ->required()
                 ->searchable()
                 ->getSearchResultsUsing(fn (string $search): array => Supplier::query()
@@ -124,7 +124,7 @@ class PurchaseOrderResource extends Resource
             Section::make('Informasi Pesanan')
                 ->schema([
                     TextEntry::make('po_number')->label('No. PO'),
-                    TextEntry::make('supplier.name')->label('Supplier'),
+                    TextEntry::make('supplier.name')->label('Pemasok'),
                     TextEntry::make('ordered_at')->label('Tanggal Pesanan')->date('d M Y'),
                     TextEntry::make('expected_at')->label('Perkiraan Tiba')->date('d M Y')->placeholder('—'),
                     TextEntry::make('status')->label('Status')->badge(),
@@ -159,7 +159,7 @@ class PurchaseOrderResource extends Resource
     {
         return $table->columns([
             TextColumn::make('po_number')->label('No. PO')->searchable()->sortable(),
-            TextColumn::make('supplier.name')->label('Supplier')->searchable(),
+            TextColumn::make('supplier.name')->label('Pemasok')->searchable(),
             TextColumn::make('ordered_at')->label('Tanggal')->date('d M Y')->sortable(),
             TextColumn::make('status')->label('Status')->badge()
                 ->formatStateUsing(fn (string $state): string => match ($state) {

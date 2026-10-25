@@ -58,11 +58,11 @@ class SalesSummaryWidget extends BaseWidget
                 ->description('Total invoice bulan '.now()->translatedFormat('F'))
                 ->color('info')
                 ->icon('heroicon-o-chart-bar'),
-            Stat::make('Piutang Outstanding', Money::formatIdr($outstandingAR))
+            Stat::make('Piutang Belum Dibayar', Money::formatIdr($outstandingAR))
                 ->description('Belum dibayar')
                 ->color('warning')
                 ->icon('heroicon-o-clock'),
-            Stat::make('Invoice Overdue', $overdueCount)
+            Stat::make('Faktur Terlambat', $overdueCount)
                 ->description('Jatuh tempo terlewat')
                 ->color('danger')
                 ->icon('heroicon-o-exclamation-triangle'),

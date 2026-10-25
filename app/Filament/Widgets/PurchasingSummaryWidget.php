@@ -73,7 +73,7 @@ class PurchasingSummaryWidget extends BaseWidget
                 ->description('Pemasok siap dipakai')
                 ->color('gray')
                 ->icon('heroicon-o-building-office'),
-            Stat::make('Utang Outstanding', Money::formatIdr($outstandingAp))
+            Stat::make('Utang Belum Dibayar', Money::formatIdr($outstandingAp))
                 ->description('Belum dibayar ke pemasok')
                 ->color('warning')
                 ->icon('heroicon-o-credit-card'),

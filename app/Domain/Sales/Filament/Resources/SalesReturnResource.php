@@ -45,7 +45,7 @@ class SalesReturnResource extends Resource
             Section::make('Retur Penjualan')
                 ->schema([
                     Select::make('sales_invoice_id')
-                        ->label('Invoice')
+                        ->label('Faktur')
                         ->required()
                         ->live()
                         ->searchable()
@@ -78,6 +78,7 @@ class SalesReturnResource extends Resource
             Section::make('Item Diretur')
                 ->schema([
                     Repeater::make('items')
+                        ->label('Item Retur')
                         ->hiddenLabel()
                         ->schema([
                             Select::make('sales_invoice_item_id')
@@ -130,7 +131,7 @@ class SalesReturnResource extends Resource
             Section::make('Informasi Retur')
                 ->schema([
                     TextEntry::make('return_number')->label('No. Retur'),
-                    TextEntry::make('invoice.invoice_number')->label('Invoice'),
+                    TextEntry::make('invoice.invoice_number')->label('Faktur'),
                     TextEntry::make('customer.name')->label('Pelanggan'),
                     TextEntry::make('warehouse.name')->label('Gudang'),
                     TextEntry::make('returned_at')->label('Tanggal')->date('d M Y'),
@@ -148,7 +149,7 @@ class SalesReturnResource extends Resource
                             TextEntry::make('subtotal')->label('Subtotal')->money('IDR'),
                             TextEntry::make('tax_amount')->label('PPN')->money('IDR'),
                             TextEntry::make('total')->label('Total')->money('IDR'),
-                            TextEntry::make('restock')->label('Restock')->formatStateUsing(fn (bool $state): string => $state ? 'Ya' : 'Tidak'),
+                            TextEntry::make('restock')->label('Kembalikan ke Stok')->formatStateUsing(fn (bool $state): string => $state ? 'Ya' : 'Tidak'),
                         ])
                         ->columns(4),
                 ]),
@@ -168,7 +169,7 @@ class SalesReturnResource extends Resource
     {
         return $table->columns([
             TextColumn::make('return_number')->label('No. Retur')->searchable()->sortable(),
-            TextColumn::make('invoice.invoice_number')->label('Invoice')->searchable(),
+            TextColumn::make('invoice.invoice_number')->label('Faktur')->searchable(),
             TextColumn::make('customer.name')->label('Pelanggan')->searchable(),
             TextColumn::make('warehouse.name')->label('Gudang'),
             TextColumn::make('returned_at')->label('Tanggal')->date('d M Y')->sortable(),

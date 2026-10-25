@@ -18,6 +18,8 @@ class SalesReport extends Page
 
     protected static \UnitEnum|string|null $navigationGroup = 'Laporan';
 
+    protected static ?string $title = 'Laporan Penjualan';
+
     protected static ?string $navigationLabel = 'Laporan Penjualan';
 
     protected static ?int $navigationSort = 10;

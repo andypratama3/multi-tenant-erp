@@ -35,6 +35,8 @@ class PosPage extends Page
 
     protected static \UnitEnum|string|null $navigationGroup = 'Penjualan';
 
+    protected static ?string $title = 'POS / Kasir';
+
     protected static ?string $navigationLabel = 'POS / Kasir';
 
     protected static ?int $navigationSort = 1;

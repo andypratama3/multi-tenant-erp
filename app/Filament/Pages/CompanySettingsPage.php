@@ -14,6 +14,8 @@ class CompanySettingsPage extends Page
 
     protected static \UnitEnum|string|null $navigationGroup = 'Pengaturan';
 
+    protected static ?string $title = 'Profil & Periode';
+
     protected static ?string $navigationLabel = 'Profil & Periode';
 
     protected static ?int $navigationSort = 90;

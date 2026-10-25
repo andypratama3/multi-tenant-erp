@@ -45,10 +45,10 @@ class StockValuationWidget extends BaseWidget
                     ->label('Qty')
                     ->formatStateUsing(fn ($state) => number_format((float) $state, 2)),
                 TextColumn::make('average_cost')
-                    ->label('Avg Cost')
+                    ->label('Rata-rata Harga Pokok')
                     ->money('IDR'),
                 TextColumn::make('total_value')
-                    ->label('Total Value')
+                    ->label('Total Nilai')
                     ->money('IDR')
                     ->state(fn (StockBalance $record): string => Money::mul(
                         $record->quantity,

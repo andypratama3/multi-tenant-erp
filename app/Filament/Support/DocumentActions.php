@@ -215,7 +215,7 @@ final class DocumentActions
     public static function salesOrderInvoice(): Action
     {
         return Action::make('invoice')
-            ->label('Buat Invoice')
+            ->label('Buat Faktur')
             ->icon('heroicon-o-document-plus')
             ->color('info')
             ->authorize('create', SalesInvoice::class)

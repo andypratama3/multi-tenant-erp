@@ -16,6 +16,8 @@ class EFakturExport extends Page
 
     protected static \UnitEnum|string|null $navigationGroup = 'Laporan';
 
+    protected static ?string $title = 'Export e-Faktur';
+
     protected static ?string $navigationLabel = 'Export e-Faktur';
 
     protected static ?int $navigationSort = 13;

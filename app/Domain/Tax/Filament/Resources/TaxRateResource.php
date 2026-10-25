@@ -24,6 +24,10 @@ class TaxRateResource extends Resource
 
     protected static string|\UnitEnum|null $navigationGroup = 'Pajak';
 
+    protected static ?string $modelLabel = 'Tarif Pajak';
+
+    protected static ?string $pluralModelLabel = 'Tarif Pajak';
+
     protected static ?int $navigationSort = 10;
 
     public static function form(Schema $schema): Schema
@@ -38,7 +42,7 @@ class TaxRateResource extends Resource
                     'pph_22' => 'PPh 22',
                     'pph_23' => 'PPh 23',
                     'pph_final' => 'PPh Final',
-                    'other' => 'Other',
+                    'other' => 'Lainnya',
                 ])
                 ->required(),
             TextInput::make('rate')->label('Tarif')->numeric()->required()->minValue(0)->maxValue(100)->suffix('%'),

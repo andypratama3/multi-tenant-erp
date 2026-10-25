@@ -17,6 +17,8 @@ class FinancialReport extends Page
 
     protected static \UnitEnum|string|null $navigationGroup = 'Laporan';
 
+    protected static ?string $title = 'Laporan Keuangan';
+
     protected static ?string $navigationLabel = 'Laporan Keuangan';
 
     protected static ?int $navigationSort = 12;

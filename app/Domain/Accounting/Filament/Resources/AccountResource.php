@@ -25,44 +25,51 @@ class AccountResource extends Resource
 
     protected static string|\UnitEnum|null $navigationGroup = 'Akuntansi';
 
+    protected static ?string $modelLabel = 'Akun';
+
+    protected static ?string $pluralModelLabel = 'Akun';
+
     protected static ?int $navigationSort = 10;
 
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
-            TextInput::make('code')->required()->maxLength(20)->unique(ignoreRecord: true),
-            TextInput::make('name')->required()->maxLength(150),
+            TextInput::make('code')->label('Kode')->required()->maxLength(20)->unique(ignoreRecord: true),
+            TextInput::make('name')->label('Nama Akun')->required()->maxLength(150),
             Select::make('type')
+                ->label('Jenis Akun')
                 ->options([
-                    'asset' => 'Asset',
-                    'liability' => 'Liability',
-                    'equity' => 'Equity',
-                    'revenue' => 'Revenue',
-                    'expense' => 'Expense',
+                    'asset' => 'Aset',
+                    'liability' => 'Liabilitas',
+                    'equity' => 'Ekuitas',
+                    'revenue' => 'Pendapatan',
+                    'expense' => 'Beban',
                 ])
                 ->required(),
             Select::make('normal_balance')
+                ->label('Saldo Normal')
                 ->options([
                     'debit' => 'Debit',
-                    'credit' => 'Credit',
+                    'credit' => 'Kredit',
                 ])
                 ->required(),
             Select::make('parent_id')
+                ->label('Akun Induk')
                 ->options(Account::query()->pluck('name', 'id'))
                 ->searchable()
                 ->nullable(),
-            Toggle::make('is_leaf')->default(true),
-            Toggle::make('is_active')->default(true),
-            Textarea::make('description')->rows(3),
+            Toggle::make('is_leaf')->label('Akun Detail')->default(true),
+            Toggle::make('is_active')->label('Aktif')->default(true),
+            Textarea::make('description')->label('Deskripsi')->rows(3),
         ]);
     }
 
     public static function table(Table $table): Table
     {
         return $table->columns([
-            TextColumn::make('code')->searchable()->sortable(),
-            TextColumn::make('name')->searchable()->sortable(),
-            TextColumn::make('type')->badge()
+            TextColumn::make('code')->label('Kode')->searchable()->sortable(),
+            TextColumn::make('name')->label('Nama Akun')->searchable()->sortable(),
+            TextColumn::make('type')->label('Jenis')->badge()
                 ->color(fn (string $state): string => match ($state) {
                     'asset' => 'info',
                     'liability' => 'warning',
@@ -71,9 +78,9 @@ class AccountResource extends Resource
                     'expense' => 'danger',
                     default => 'gray',
                 }),
-            TextColumn::make('normal_balance'),
-            IconColumn::make('is_leaf')->boolean(),
-            IconColumn::make('is_active')->boolean(),
+            TextColumn::make('normal_balance')->label('Saldo Normal'),
+            IconColumn::make('is_leaf')->label('Akun Detail')->boolean(),
+            IconColumn::make('is_active')->label('Aktif')->boolean(),
         ])
             ->actions([EditAction::make(), DeleteAction::make()])
             ->headerActions([CreateAction::make()])
