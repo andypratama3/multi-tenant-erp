@@ -1,0 +1,12 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    level: 8
+    paths:
+        - app/
+    excludePaths:
+        # Inertia middleware only present when installed
+        - app/Http/Middleware/HandleInertiaRequests.php (?)
+    checkModelProperties: true
+    checkPhpDocMissingReturn: true
